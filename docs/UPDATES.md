@@ -1,9 +1,9 @@
 # Firmware-update safety
 
-Hardware installation is enabled for candidate `FM-1_941`, which includes the
-retained-SRAM boot-marker fix and new lyric UI. The earlier `FM-1_939` failed to boot.
-RAM-only recovery succeeded, returning the unit to its existing `FM-1_939`.
-Physical cold-boot validation of the new candidate is pending. Emulator success is not a hardware safety certification.
+Hardware installation is enabled for candidate `FM-1_942`, which retains the
+retained-SRAM boot-marker fix and adds articulation controls and ADSR. The earlier `FM-1_939` failed to boot.
+RAM-only recovery succeeded, returning the unit to its existing `FM-1_939`; the user later reported a working
+`FM-1_941` installation. Physical validation of `FM-1_942` is pending. Emulator success is not a hardware safety certification.
 
 The unchanged Felucca loader is pinned at commit
 `440e62ce8a33d9bb285ab6bbca9a0fd50e459648`. Its portable core and regression tests
@@ -89,10 +89,10 @@ password in chat. The user successfully ran this recovery; the existing
 ## Controlled candidate preflight
 
 `tools/install_candidate.py` validates a locally generated candidate's SHA-256,
-checks its product is `FM-1_941`, and queries the connected FM-1 identity. It uses
+checks its product is `FM-1_942`, and queries the connected FM-1 identity. It uses
 the vendored GPL Felucca installer with stricter request/completion gates and the
 existing Python RtMidi backend. The default sends no update command. The current
-identity must equal `--expected-current` (default `FM-1_939`). `--apply` starts the
+identity must equal `--expected-current` (default `FM-1_941`). `--apply` starts the
 actual two-stage flash update and must be an explicit hardware-test decision.
 The NSX39 MIDI device is not an install target. The public page allows explicit
 installation of the fixed candidate after generation and acknowledgement;

@@ -35,7 +35,8 @@ The template's voice reserve is all zeros and cannot produce vocals until the
 browser injects the locally extracted bank. The generated template is suitable
 for packaging and simulator checks, not a useful stand-alone instrument.
 
-Native firmware and browser preview share `firmware/src/voice.c` and
+Native firmware and browser preview share `firmware/src/voice.c`, its included
+`firmware/src/articulation.c`, and
 `firmware/src/performance.c`. `tools/gen_label_font.py` subsets Noto CJK to the
 179 UI glyphs, storing 2-bit coverage with per-glyph RLE when smaller. No font
 package download is required at runtime. `NSX39_LABEL_FONT` overrides its local

@@ -7,13 +7,16 @@ class Voice extends AudioWorkletProcessor {
   if(d.select!==undefined){this.e.performance_manual(d.select);changed=true;}
   if(d.lyric!==undefined){this.e.performance_mode(d.lyric);changed=true;}
   if(d.rewind){this.e.performance_select(-1);changed=true;}
+  if(d.adsr){this.e.nsx_adsr(d.adsr[0],d.adsr[1]);changed=true;}
+  if(d.button!==undefined){this.e.nsx_panel_button(d.button);changed=true;}
   if(d.note!==undefined){if(d.revoice)this.e.performance_revoice(d.note,127);else this.e.performance_trigger(d.note,127);changed=true;}
-  if(changed)this.port.postMessage({state:true,last:this.e.web_last(),next:this.e.web_next(),position:this.e.web_position()});
+  if(changed)this.port.postMessage({state:true,last:this.e.web_last(),next:this.e.web_next(),position:this.e.web_position(),articulation:this.articulation()});
   if(d.off!==undefined)this.e.nsx_note_off(d.off);
   if(d.panic)this.e.nsx_midi(0xb0,120,0);
  };}
+ articulation(){return Array.from(new Int32Array(this.e.memory.buffer,this.e.web_art_ptr(),19));}
  next(){if(this.index>=128){this.e.web_render();this.index=0;}return this.buffer[this.index++]/32768;}
  process(_inputs,outputs){const out=outputs[0];if(!this.ready)return true;for(let i=0;i<out[0].length;i++){this.phase+=22050/sampleRate;if(this.phase>=1){this.phase-=1;this.a=this.b;this.b=this.next();}const s=(this.a+(this.b-this.a)*this.phase)*0.6;for(const ch of out)ch[i]=s;this.scope[this.scopeIndex++%240]=s;}
- if(++this.ticks%32===0)this.port.postMessage({wave:this.scope,scopeIndex:this.scopeIndex});return true;}
+ if(++this.ticks%32===0)this.port.postMessage({wave:this.scope,scopeIndex:this.scopeIndex,articulation:this.articulation()});return true;}
 }
 registerProcessor('nsx-voice',Voice);

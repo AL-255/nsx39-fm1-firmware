@@ -7,11 +7,10 @@ shows the last played syllable, the next one, and the output waveform.**
 
 Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 
-**Experimental hardware installation:** the first physical test of build `FM-1_939`
-returned to UBOOT with a black screen. A retained-SRAM startup bug was reproduced
-and corrected in candidate `FM-1_941`. RAM-only recovery succeeded; the installed
-unit still runs `FM-1_939`. Installation of the fixed build is enabled; physical
-cold-boot validation is still pending.
+**Experimental hardware installation:** the retained-SRAM startup bug in
+`FM-1_939` was fixed in `FM-1_941`; the user subsequently reported a working
+installation. Current `FM-1_942` adds articulation controls and ADSR. It retains
+the startup fix; this new build has not been physically validated.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
 port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
 persistence compatibility remains unfinished. Do not mistake bank coverage for
@@ -42,6 +41,10 @@ On the FM-1:
 | PRESETS encoder | Cycle hiragana, katakana and romaji labels |
 | 27 keys | Monophonic trigger/pitch; each new key press advances one lyric syllable |
 | OCT− / OCT+ | Three registers: MIDI 53–79, 65–91 (default), 77–103 |
+| Knobs 1–4 | Attack / decay / sustain / release; live amplitude envelope |
+| LFO / EDIT / GLO / HOME / REC | Vibrato on/off / type / rate / delay / depth |
+| SCL / ENV | Automatic pitch / automatic dynamics switches (native approximations) |
+| FX / ARP / SEQ / PLAY | Recorded-noise level / connection timing / glide / sustain hold |
 | MASTER | Output level |
 | SAVE | Panic / all sound off (does not save to flash) |
 | Both OCT buttons, held 5 s | Enter UBOOT for recovery |
@@ -50,9 +53,11 @@ On the FM-1:
 The largest label retains the **last played** syllable, even after key release,
 rewind, or a selection change. The **next** syllable appears below in smaller type.
 PRESETS changes both labels using a 40-pixel antialiased Noto Sans CJK JP font
-(20 pixels for the upcoming syllable). Debug rows show MIDI note/velocity, source
-unit and phonemes, onset/loop state, a 10.9 ms waveform window, render time,
-maximum render time, and late-buffer count. The last waveform remains after release.
+(20 pixels for the upcoming syllable). The display shows current articulation
+settings and an ADSR diagram with its active segment and live level cursor, beside
+a 4.6 ms waveform window. MIDI note, octave, maximum render time and late-buffer
+count remain visible. [Articulation controls and fidelity](docs/ARTICULATION.md)
+describes the exact mappings and the remaining original-behavior gaps.
 
 Each factory bank loops at its original return marker. Banks 1–5 are single-vowel
 loops; banks 6–10 are factory phrases, and 11–15 preserve the original duplicate
@@ -80,8 +85,8 @@ measures the codec, not fidelity to the complete original synthesizer.
 
 The native renderer decodes a transition when it is selected into one of two
 bounded 8,192-sample buffers. No heap or unbounded decoding runs in the audio path.
-The firmware uses about **47 KB normal RAM**, **118 KB buffer pool**, and a
-**556 KB app image**, inside the fixed 581,564-byte app slot. Audio renders at
+The firmware uses about **48 KB normal RAM**, **118 KB buffer pool**, and a
+**560 KB app image**, inside the fixed 581,564-byte app slot. Audio renders at
 22,050 Hz and is interpolated to the FM-1's approximately 44.1 kHz output.
 
 Published artifacts contain only our compiled code, an **empty voice reserve**,

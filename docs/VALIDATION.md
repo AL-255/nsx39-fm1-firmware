@@ -128,3 +128,40 @@ The controlled local candidate installer is exercised without device access by
 `tests/install_candidate_test.py` and the vendored simulated-device suite. It
 checks package SHA/product, identity framing/checksum, read bounds, phase-specific
 completion and failed sends. Default candidate preflight does not start an update.
+
+## Articulation and ADSR (FM-1_942)
+
+Public synthetic tests cover ADSR times and boundaries, active sustain changes,
+zero/maximum release, panic, hold-delayed release, recorded release selection,
+held-key pitch changes without envelope retrigger, 14-bit delay, reserved NRPNs,
+all eleven articulation button actions and all four encoder endpoints.
+
+Private validation additionally runs:
+
+```sh
+node tools/test_articulation_reference.mjs /path/to/NSX39-Disasm
+```
+
+This requires the reference project's existing original-instruction WASM and a
+locally generated genuine bank. It compares 4,864 frames against SH routine
+`0409330e`, using the original cents/frequency conversions, across all four
+vibrato types, four rate/depth combinations, delayed onsets and live modulation
+toggles. Those control outputs match.
+It does not establish complete original vocal/audio or automatic-contour fidelity.
+
+The actual generated firmware was exercised for 1,900 ms with knob and button
+inputs, held notes, sustain and release. Four LCD captures were inspected for
+readability and live envelope cursor/state. The run produced 24 LCD frames,
+568 audio halves and zero late buffers; maximum observed render time was 411 us.
+Its script was:
+
+```sh
+/path/to/fm1-emu --fwsc local/voice.fwsc --ms 1900 \
+  --keys '300:enc2:+32,350:enc3:+48,400:enc4:-48,450:enc5:+24,500:LFO,550:EDIT,700-1100:n7,900:enc6:+1,1050:PLAY,1200:enc6:+1,1300:PLAY' \
+  --snap 850,1150,1500,1850 --wav local/articulation-debug.wav
+```
+
+ADSR is an added FM-1 envelope. See ARTICULATION.md for the explicit remaining
+differences in automatic pitch/dynamics and scheduling. Firmware-update and
+startup marker code are unchanged; the standard updater/recovery and dirty-SRAM
+boot regressions are required for this new application image.

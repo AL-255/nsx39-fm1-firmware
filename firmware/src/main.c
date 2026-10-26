@@ -4,7 +4,7 @@
 #define FELUCCA_OTA 1
 #define FELUCCA_CDC 0
 #define FELUCCA_UAC 0
-#define FELUCCA_ID "FM-1_941"
+#define FELUCCA_ID "FM-1_942"
 // Miku cyan #39C5BB, quantized to the LCD's RGB565 format.
 #define UI_ACCENT 0x3e37u
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
@@ -51,7 +51,7 @@ extern void isr_timer5(void),isr_alnk0(void);
 static void panel_audio(void){
  unsigned notes=fm1_in.notes,pressed=notes&~held_note_mask;held_note_mask=notes;
  int revoice=0;if(!pressed&&notes&&panel_key<27&&!(notes&(1u<<panel_key))){pressed=notes;revoice=1;}
- if(pressed){unsigned k=0;while(pressed>>1){pressed>>=1;k++;}if(panel_note!=255)nsx_note_off((uint8_t)panel_note);panel_key=k;panel_note=53+12*octave+k;if(revoice)performance_revoice((uint8_t)panel_note,127);else performance_trigger((uint8_t)panel_note,127);}
+ if(pressed){unsigned k=0;while(pressed>>1){pressed>>=1;k++;}panel_key=k;panel_note=53+12*octave+k;if(revoice)performance_revoice((uint8_t)panel_note,127);else performance_trigger((uint8_t)panel_note,127);}
  if(panel_note!=255&&!notes){nsx_note_off((uint8_t)panel_note);panel_note=255;panel_key=255;}
  if(midi_in_overflow){nsx_midi(0xb0,120,0);mi_r=mi_w;midi_in_overflow=0;}
  unsigned budget=MQ;while(mi_r!=mi_w&&budget--){uint32_t p=midi_in_q[mi_r++%MQ];performance_midi((uint8_t)(p>>8),(uint8_t)(p>>16),(uint8_t)(p>>24));}
@@ -77,30 +77,45 @@ static void put_text(unsigned x,unsigned y,const char*s,uint16_t color,unsigned 
  extern const uint8_t ui_font[96][8];while(*s&&x+6*scale<240){unsigned c=(unsigned char)*s++;if(c<32||c>127)c='?';for(unsigned row=0;row<8;row++)for(unsigned bit=0;bit<6;bit++)if(ui_font[c-32][row]&(1u<<bit))for(unsigned a=0;a<scale;a++)for(unsigned b=0;b<scale;b++)if(y+row*scale+b<240)canvas[(y+row*scale+b)*240+x+bit*scale+a]=color;x+=6*scale;}
 }
 static void label_num(unsigned x,unsigned y,const char*label,unsigned n){char b[12];put_text(x,y,label,0xad55,1);number(b,n);put_text(x+str_len(label)*6,y,b,0xffff,1);}
+static void ui_line(int x,int y,int xx,int yy,uint16_t color){int dx=xx>x?xx-x:x-xx,dy=yy>y?yy-y:y-yy,sx=x<xx?1:-1,sy=y<yy?1:-1,error=dx-dy;for(;;){if(x>=0&&x<240&&y>=0&&y<240)canvas[y*240+x]=color;if(x==xx&&y==yy)break;int e=error*2;if(e>-dy){error-=dy;x+=sx;}if(e<dx){error+=dx;y+=sy;}}}
 static void screen(void){
- nsx_debug_t state;performance_state_t song;int16_t wave[240];unsigned w;
- __asm__ volatile("cli":::"memory");nsx_debug(&state);performance_snapshot(&song);w=scope_w;for(unsigned i=0;i<240;i++)wave[i]=scope[(w-240+i)&511];__asm__ volatile("sti":::"memory");
+ nsx_debug_t state;nsx_art_debug_t art;performance_state_t song;int16_t wave[240];unsigned w;
+ __asm__ volatile("cli":::"memory");nsx_debug(&state);nsx_art_debug(&art);performance_snapshot(&song);w=scope_w;for(unsigned i=0;i<240;i++)wave[i]=scope[(w-240+i)&511];__asm__ volatile("sti":::"memory");
  for(unsigned i=0;i<240*240;i++)canvas[i]=0x0841;
  static const char*const scripts[]={"HIRAGANA","KATAKANA","ROMAJI"};
  put_text(10,8,"NSX39",UI_ACCENT,1);put_text(112,8,scripts[script_mode],UI_ACCENT,1);
  if(!voice_ready){put_text(10,40,"NO VALID VOICE BANK",0xfca0,1);put_text(10,64,"Generate with your dump",0xffff,1);}
  else{
   label_num(10,25,"LYRIC ",song.mode);put_text(76,25,song.mode?"ORIGINAL":"MANUAL / SELECT",0xad55,1);
-  put_text(10,40,"LAST PLAYED",0xad55,1);if(song.has_last)label_num(150,40,"ID ",song.last);
-  ui_label(canvas,10,88,song.has_last?ui_syllable(song.last,script_mode):"—",1,UI_ACCENT);
-  put_text(10,101,"NEXT",0xad55,1);ui_label(canvas,46,116,ui_syllable(song.next,script_mode),2,UI_ACCENT);
-  if(song.mode){label_num(124,101,"STEP ",song.cursor+1);label_num(184,101,"/",song.length);}
-  else label_num(152,101,"ID ",song.next);
-  put_text(10,126,state.active?"PLAYING":"RELEASED",state.active?UI_ACCENT:0xad55,1);
-  label_num(96,126,"MIDI ",state.note);label_num(162,126,"VEL ",state.velocity);
-  label_num(10,140,"UNIT ",state.unit);put_text(84,140,nsx_phoneme(state.source),0xffff,1);put_text(120,140,"->",0xad55,1);put_text(144,140,nsx_phoneme(state.target),0xffff,1);put_text(184,140,state.steady?"LOOP":"ONSET",UI_ACCENT,1);
+  put_text(10,32,"LAST PLAYED",0xad55,1);if(song.has_last)label_num(150,32,"ID ",song.last);
+  ui_label(canvas,10,77,song.has_last?ui_syllable(song.last,script_mode):"—",1,UI_ACCENT);
+  put_text(10,91,"NEXT",0xad55,1);ui_label(canvas,46,106,ui_syllable(song.next,script_mode),2,UI_ACCENT);
+  if(song.mode){label_num(124,91,"STEP ",song.cursor+1);label_num(184,91,"/",song.length);}else label_num(152,91,"ID ",song.next);
+  static const char*const types[]={"EXTREME","FAST","NORMAL","SLIGHT"};
+  put_text(10,114,"VIB",0xad55,1);put_text(34,114,art.vibrato_depth?types[art.vibrato_type]:"OFF",UI_ACCENT,1);label_num(94,114,"DEP ",art.vibrato_depth);label_num(166,114,"RATE ",art.vibrato_rate);
+  label_num(10,125,"DELAY ms ",art.vibrato_delay);label_num(132,125,"GLIDE ",art.portamento);
+  put_text(10,136,art.auto_pitch?"AP ON":"AP OFF",art.auto_pitch?UI_ACCENT:0xad55,1);put_text(58,136,art.auto_dynamics?"DYN ON":"DYN OFF",art.auto_dynamics?UI_ACCENT:0xad55,1);
+  put_text(118,136,"NOISE",0xad55,1);int db=((int)art.noise-64)*24/(art.noise<=64?64:63);put_text(154,136,db<0?"-":"+",UI_ACCENT,1);label_num(160,136,"",(unsigned)(db<0?-db:db));put_text(178,136,"dB",0xad55,1);
+  static const char*const connections[]={"50ms","MIN","VEL"};
+  put_text(10,147,"JOIN",0xad55,1);put_text(40,147,connections[art.connection],UI_ACCENT,1);
+  put_text(82,147,art.hold?"HOLD ON":"HOLD OFF",art.hold?UI_ACCENT:0xad55,1);put_text(148,147,art.release_unit&&art.stage==NSX_ENV_RELEASE?"TAIL":"",UI_ACCENT,1);
+  label_num(10,159,"A",art.adsr[0]);label_num(68,159,"D",art.adsr[1]);label_num(126,159,"S%",art.adsr[2]);label_num(184,159,"R",art.adsr[3]);
  }
- put_text(10,154,"OUTPUT WAVEFORM / 10.9 ms",0xad55,1);
- for(unsigned x=0;x<240;x++)canvas[183*240+x]=0x2965;
- for(unsigned y=166;y<204;y++)for(unsigned x=0;x<240;x+=48)canvas[y*240+x]=0x18e3;
- int last_y=183;for(unsigned x=0;x<240;x++){int y=183-wave[x]*18/32768;y=clip(y,166,202);int a=last_y<y?last_y:y,b=last_y>y?last_y:y;for(int q=a;q<=b;q++)canvas[q*240+x]=UI_ACCENT;last_y=y;}
- label_num(10,208,"RENDER us ",render_us);label_num(132,208,"MAX ",render_max_us);label_num(10,220,"LATE ",audio_late);label_num(96,220,"OCT ",octave);
- put_text(10,231,song.mode?"SELECT left: restart lyric":"SELECT: syllable",0xad55,1);
+ static const char*const stages[]={"IDLE","A","D","S","R"};
+ put_text(10,172,"ADSR ms/%",0xad55,1);put_text(76,172,stages[art.stage],UI_ACCENT,1);put_text(132,172,"WAVE",0xad55,1);
+ unsigned total=art.adsr[0]+art.adsr[1]+500+art.adsr[3];
+ unsigned ax=13+art.adsr[0]*85/total,dx=ax+3+art.adsr[1]*85/total,sx=dx+3+500*85/total;
+ unsigned sy=213-art.adsr[2]*30/100;ui_line(10,213,(int)ax,183,art.stage==NSX_ENV_ATTACK?UI_ACCENT:0x5b6c);
+ ui_line((int)ax,183,(int)dx,(int)sy,art.stage==NSX_ENV_DECAY?UI_ACCENT:0x5b6c);ui_line((int)dx,(int)sy,(int)sx,(int)sy,art.stage==NSX_ENV_SUSTAIN?UI_ACCENT:0x5b6c);ui_line((int)sx,(int)sy,110,213,art.stage==NSX_ENV_RELEASE?UI_ACCENT:0x5b6c);
+ unsigned px=110;if(art.stage==NSX_ENV_ATTACK)px=10+(ax-10)*art.progress/32768;else if(art.stage==NSX_ENV_DECAY)px=ax+(dx-ax)*art.progress/32768;else if(art.stage==NSX_ENV_SUSTAIN)px=(dx+sx)/2;else if(art.stage==NSX_ENV_RELEASE)px=sx+(110-sx)*art.progress/32768;
+ int py=213-(int)(art.level*30/32768);if(art.stage)for(int y=py-1;y<=py+1;y++)for(unsigned x=px-1;x<=px+1;x++)if(y>=181&&y<216)canvas[(unsigned)y*240+x]=0xffff;
+ for(unsigned x=130;x<232;x++)canvas[198*240+x]=0x2965;
+ int last_y=198;for(unsigned x=0;x<102;x++){int y=clip(198-wave[x+138]*15/32768,182,214);int a=last_y<y?last_y:y,b=last_y>y?last_y:y;for(int q=a;q<=b;q++)canvas[q*240+130+x]=UI_ACCENT;last_y=y;}
+ label_num(10,220,"NOTE ",state.note);label_num(82,220,"OCT ",octave);label_num(148,220,"LATE ",audio_late);
+ put_text(10,232,"KNOBS 1-4: A D S R",0xad55,1);label_num(148,232,"MAX us ",render_max_us);
+ // Reflect live state, including external MIDI changes, in the panel LEDs.
+ fm1_led_key(2,art.noise!=64);fm1_led_key(3,art.auto_pitch);fm1_led_key(4,art.auto_dynamics);fm1_led_key(5,art.vibrato_depth!=0);
+ fm1_led_key(6,art.vibrato_type!=2);fm1_led_key(7,art.vibrato_rate!=64);fm1_led_key(8,art.vibrato_delay!=0);fm1_led_key(10,art.connection!=1);fm1_led_key(11,art.portamento!=0);fm1_led_key(12,art.hold);fm1_led_key(13,art.vibrato_depth!=0);
  lcd_sync(); // DMA must finish before its source buffer can be reused.
  // lcd_blit reads the buffer until the next lcd_sync, so finish before return.
  for(unsigned i=0;i<240*240;i++)canvas[i]=(uint16_t)((canvas[i]>>8)|(canvas[i]<<8));
@@ -118,8 +133,9 @@ static void ota_commit(const uint8_t*parm){usb_detach();fm1_delay_ms(30);fm1_ent
 static void musical_sysex(void){if(sx_ready&&sx_frame_len>=5&&sx_frame[0]==0x43&&sx_frame[1]==0x79){__asm__ volatile("cli":::"memory");performance_sysex(sx_frame,sx_frame_len);sx_ready=0;__asm__ volatile("csync\nsti":::"memory");}}
 static void panel_controls(void){
  uint32_t buttons=fm1_input_edges(0);if(buttons&1)octave=octave?octave-1:0;if(buttons&2)octave=octave<2?octave+1:2;
- // SAVE (9) is panic; musical state remains in RAM.
- if(buttons&(1u<<9)){__asm__ volatile("cli":::"memory");nsx_midi(0xb0,120,0);__asm__ volatile("sti":::"memory");}
+ // Musical controls change RAM only. The updater and recovery controls are separate.
+ for(unsigned button=2;button<14;button++)if(buttons&(1u<<button)){__asm__ volatile("cli":::"memory");nsx_panel_button(button);__asm__ volatile("sti":::"memory");}
+ for(unsigned knob=0;knob<4;knob++){int step=fm1_enc_take(knob+2);if(step){__asm__ volatile("cli":::"memory");nsx_adsr_knob(knob,step);__asm__ volatile("sti":::"memory");}}
  int delta=fm1_enc_take(0);if(delta){__asm__ volatile("cli":::"memory");performance_select(delta);__asm__ volatile("sti":::"memory");}
  delta=fm1_enc_take(1);if(delta){__asm__ volatile("cli":::"memory");performance_rotate(delta);__asm__ volatile("sti":::"memory");}
  delta=fm1_enc_take(6);if(delta)script_mode=(unsigned)((int)script_mode+delta%3+3)%3;

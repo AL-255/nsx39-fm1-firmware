@@ -31,8 +31,9 @@ test('factory table requires bounded syllables and a return marker; malformed ba
 });
 test('AudioWorklet shares the firmware sequencer and reports played/upcoming state',{skip:!built},async()=>{
  let Processor;const replies=[];class Base{constructor(){this.port={postMessage:d=>replies.push(d)};}}
- vm.runInNewContext(await readFile('web/voice-worklet.js','utf8'),{AudioWorkletProcessor:Base,registerProcessor:(_,p)=>Processor=p,WebAssembly,Uint8Array,Int16Array,Float32Array,sampleRate:48000});
+ vm.runInNewContext(await readFile('web/voice-worklet.js','utf8'),{AudioWorkletProcessor:Base,registerProcessor:(_,p)=>Processor=p,WebAssembly,Uint8Array,Int16Array,Float32Array,Int32Array,sampleRate:48000});
  const p=new Processor(),send=d=>p.port.onmessage({data:d});await send({init:true,wasm:await readFile('build/voice-engine.wasm'),bank:synthetic(fakeLyrics())});assert(replies.at(-1).ready);
+ await send({adsr:[0,250]});assert.equal(replies.at(-1).articulation[0],250);await send({button:5});assert(replies.at(-1).articulation[9]>0);
  await send({lyric:6});assert.equal(replies.at(-1).next,30);await send({note:65});assert.equal(replies.at(-1).last,30);assert.equal(replies.at(-1).next,31);
  await send({note:69,revoice:true});assert.equal(replies.at(-1).last,30);assert.equal(replies.at(-1).next,31);
  const channels=[new Float32Array(128),new Float32Array(128)];let energy=0;for(let k=0;k<40;k++){assert.equal(p.process([], [channels]),true);energy+=channels[0].reduce((n,x)=>n+x*x,0);}assert(energy>0);

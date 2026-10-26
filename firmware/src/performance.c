@@ -22,7 +22,7 @@ void performance_trigger(uint8_t note,uint8_t velocity){
 }
 void performance_revoice(uint8_t note,uint8_t velocity){
  if(!has_last){performance_trigger(note,velocity);return;}
- nsx_sequence(0);nsx_select(last);nsx_note_on(note,velocity);if(!mode)nsx_select(manual);
+ nsx_sequence(0);nsx_select(last);nsx_revoice(note,velocity);if(!mode)nsx_select(manual);
 }
 void performance_midi(uint8_t st,uint8_t a,uint8_t b){
  if(st==0x90){performance_trigger(a,b);return;}

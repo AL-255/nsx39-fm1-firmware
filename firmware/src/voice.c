@@ -30,21 +30,22 @@ static unsigned phrase_len,phrase_pos,current_name,current_slot,current_unit,ste
 static uint32_t cursor_q8,source_speed,blend_age,random_state;
 static int steady_a,steady_b;
 static int32_t next_grain_q16,period_q16,current_period_q16;
-static unsigned current_note,velocity,gate,pedal,release_pending,age;
+static unsigned current_note,velocity,gate,pedal,release_pending,age,release_unit;
+static unsigned glide_length,glide_elapsed;static int32_t glide_start_cents,current_cents;
 static int32_t gain_q15,volume=100,expression=127,bend=8192,bend_range=16,tune=8192;
 static uint8_t nrpn_msb=127,nrpn_lsb=127,rpn_msb=127,rpn_lsb=127;
 static uint8_t controls[16];
 static int32_t dc_x,dc_y,last_sample;
-static uint32_t vib_phase;
 typedef struct {int active,slot,unit,steady;int32_t pos_q16;unsigned elapsed,length;} grain_t;
 static grain_t grains[3];
+#include "articulation.c"
 
 const char *nsx_pronunciation(unsigned i){if(!bank_ok||i>=128)return "";return (const char*)(vb+r32(vb+r32(vb+28)+i*4));}
 unsigned nsx_selected(void){return selected;}
 const char *nsx_phoneme(unsigned id){return bank_ok&&id<name_count?name(id):"-";}
 void nsx_sequence(unsigned on){fixed_syllable=!on;}
 void nsx_debug(nsx_debug_t*out){out->selected=playing_syllable;out->note=current_note;out->velocity=velocity;out->active=nsx_active();out->unit=current_unit;out->source=current_unit<unit_count?unit(current_unit)[24]:255;out->target=current_unit<unit_count?unit(current_unit)[25]:255;out->steady=steady_mode;}
-unsigned nsx_active(void){return gate||gain_q15>0;}
+unsigned nsx_active(void){return gate||envelope.stage!=NSX_ENV_IDLE||gain_q15>0;}
 void nsx_select(unsigned i){selected=i&127u;lyric_cursor=selected;}
 void nsx_solge(unsigned on){solfege=on!=0;}
 static void parse_lyrics(const char *s,int append){
@@ -53,15 +54,23 @@ static void parse_lyrics(const char *s,int append){
  syllable_count=n;lyric_cursor=0;
 }
 static int decode_unit(unsigned id,unsigned slot){const uint8_t*d=unit(id);unsigned len=r32(d+4),blocks=r16(d+22);int16_t tmp[128];if(len>NSX_MAX_UNIT)return 0;for(unsigned i=0;i<blocks;i++){nsx_decode_ima(vb+r32(d)+i*68,tmp);unsigned n=len-i*128;if(n>128)n=128;for(unsigned k=0;k<n;k++)cache[slot][i*128+k]=tmp[k];}cache_id[slot]=(int)id;return 1;}
+static void configure_source_timing(unsigned length){
+ // Fixed mode requests a 50 ms unit; velocity mode is 2x/1x/0.5x
+ // duration at velocity 0/100/127. Minimum mode retains the source duration.
+ if(controls[12]==0)source_speed=length*256u/1103u;
+ else if(controls[12]==2){unsigned scale=velocity<=100?2000u-velocity*10u:1000u-(velocity-100u)*500u/27u;source_speed=256000u/scale;}
+ else source_speed=256;
+ if(!source_speed)source_speed=1;
+}
 static void enter_unit(unsigned next){
  int id=find_unit(current_name,next,1,0);if(id<0)id=find_unit((unsigned)name_id("Sil"),next,1,0);
  current_name=next;cursor_q8=0;steady_mode=0;
- if(id>=0){current_slot^=1u;decode_unit((unsigned)id,current_slot);current_unit=(unsigned)id;}
+ if(id>=0){current_slot^=1u;decode_unit((unsigned)id,current_slot);current_unit=(unsigned)id;configure_source_timing(r32(unit((unsigned)id)+4));}
  else {id=find_unit(next,255,0,0);if(id>=0){current_unit=(unsigned)id;steady_mode=1;steady_a=id;steady_b=id;blend_age=0;}else current_unit=0xffffu;}
 }
 static void next_source(void){
  if(phrase_pos<phrase_len){enter_unit(phrase[phrase_pos++]);return;}
- int id=find_unit(current_name,255,0,0);if(id>=0&&gate){current_unit=(unsigned)id;steady_a=id;steady_b=id;steady_mode=1;cursor_q8=blend_age=0;}
+ int id=find_unit(current_name,255,0,0);if(id>=0&&(gate||envelope.stage!=NSX_ENV_IDLE)&&!release_unit){current_unit=(unsigned)id;steady_a=id;steady_b=id;steady_mode=1;cursor_q8=blend_age=0;}
  else {current_unit=0xffffu;gate=0;}
 }
 static int32_t source_period(void){if(current_unit>=unit_count)return 56<<16;const uint8_t*d=unit(current_unit);unsigned n=r16(d+20),i=(cursor_q8>>8)/128;if(i>=n)i=n-1;int32_t p=(int32_t)r32(vb+r32(d+16)+4*i);if(p<=0)return p;return clip(p,20<<16,149<<16);}
@@ -71,40 +80,49 @@ static int16_t source_sample(int slot,unsigned id,int sustain,int pos){
  if(pos<0||pos>=len||cache_id[slot]!=(int)id)return 0;return cache[slot][pos];
 }
 static int32_t get_period(void){
- // cents offset, linearly interpolated semitone period table: bounded integer math.
- int cents=(int)current_note*100+(bend-8192)*bend_range*100/8192+(tune-8192)*100/8192;
- if(controls[1])cents+=(int)(controls[1]-64)/8; // automatic pitch onset gesture
- unsigned delay=(unsigned)controls[7]*173u;
- if(age>delay){int32_t s=sin_q15[(vib_phase>>24)&255];cents+=s*(int)controls[5]*150/(32768*127);}
- if(controls[2])cents+=(random_state&1)?1:-1;
+ int target=(int)current_note*100;
+ if(glide_length&&glide_elapsed<glide_length)target=glide_start_cents+(target-glide_start_cents)*(int)glide_elapsed/(int)glide_length;
+ current_cents=target;
+ int cents=target+(bend-8192)*bend_range*100/8192+(tune-8192)*100/8192+articulation_vibrato_q16/65536;
+ // Full original randomized note-to-note contours remain separate from the
+ // sample-bank renderer. Use a bounded onset correction rather than random jitter.
+ if(controls[1]&&age<1103)cents-=40*(int)(1103-age)/1103;
  cents=clip(cents,0,12699);unsigned note=(unsigned)cents/100,frac=(unsigned)cents%100;
  return (int32_t)(note_period[note]+((int32_t)note_period[note+1]-(int32_t)note_period[note])*(int)frac/100);
 }
+
 void nsx_note_on(uint8_t note,uint8_t vel){
  if(!bank_ok)return;if(!vel){nsx_note_off(note);return;}
- current_note=note;velocity=vel;gate=1;release_pending=0;age=0;
+ unsigned legato=gate;glide_start_cents=current_cents;glide_elapsed=0;glide_length=legato?((unsigned)controls[8]*NSX_RATE/127u):0;
+ current_note=note;velocity=vel;gate=1;release_pending=release_unit=0;age=0;articulation_note_on(legato);
  if(solfege){static const uint8_t sol[12]={0,0,1,1,2,3,3,4,4,5,5,6};unsigned ix[7]={25,40,86,0,4,104,2};unsigned s=sol[note%12];selected=ix[s];parse_lyrics(nsx_pronunciation(selected),0);}
  unsigned n=syllable_count?(fixed_syllable?selected:lyric_cursor)%syllable_count:0;playing_syllable=n;phrase_len=syllable_n[n];for(unsigned k=0;k<phrase_len;k++)phrase[k]=syllables[n][k];phrase_pos=0;
  lyric_cursor=syllable_count?(lyric_cursor+1)%syllable_count:0;if(!fixed_syllable)selected=n;
  if(!gain_q15)current_name=(unsigned)name_id("Sil");
  next_source();period_q16=get_period();if(!current_period_q16||!controls[8])current_period_q16=period_q16;
- source_speed=(controls[12]>=2)?(unsigned)(128+(127-vel)*3):256;
  next_grain_q16=0;
 }
-void nsx_note_off(uint8_t note){if(note!=current_note)return;if(pedal){release_pending=1;return;}gate=0;}
+static void begin_release(void){
+ if(!gate)return;gate=0;release_pending=0;phrase_pos=phrase_len;articulation_note_off();
+ if(!adsr_ms[3]){articulation_panic();gain_q15=0;for(unsigned i=0;i<3;i++)grains[i].active=0;return;}
+ int silence=name_id("Sil"),id=silence>=0?find_unit(current_name,(unsigned)silence,1,0):-1;
+ if(id>=0){enter_unit((unsigned)silence);release_unit=1;source_speed=r32(unit((unsigned)id)+4)*256u/(adsr_ms[3]*NSX_RATE/1000u);if(!source_speed)source_speed=1;}
+}
+void nsx_note_off(uint8_t note){if(note!=current_note)return;if(pedal){release_pending=1;return;}begin_release();}
+void nsx_revoice(uint8_t note,uint8_t vel){if(!gate){nsx_note_on(note,vel);return;}glide_start_cents=current_cents;glide_elapsed=0;glide_length=(unsigned)controls[8]*NSX_RATE/127u;current_note=note;velocity=vel;}
 void nsx_reset(void){
- gate=pedal=release_pending=0;gain_q15=0;for(unsigned i=0;i<3;i++)grains[i].active=0;
+ gate=pedal=release_pending=release_unit=0;gain_q15=0;articulation_reset();glide_length=glide_elapsed=0;current_cents=6900;for(unsigned i=0;i<3;i++)grains[i].active=0;
  volume=100;expression=127;bend=8192;bend_range=16;tune=8192;nrpn_msb=nrpn_lsb=rpn_msb=rpn_lsb=127;
- for(unsigned i=0;i<16;i++)controls[i]=0;controls[4]=64;controls[12]=0;selected=lyric_cursor=solfege=0;current_name=(unsigned)name_id("Sil");current_unit=0xffff;fixed_syllable=1;playing_syllable=0;dc_x=dc_y=last_sample=0;age=vib_phase=0;current_period_q16=0;random_state=1;
+ for(unsigned i=0;i<16;i++)controls[i]=0;controls[1]=1;controls[3]=2;controls[4]=64;controls[10]=64;controls[12]=1;selected=lyric_cursor=solfege=0;current_name=(unsigned)name_id("Sil");current_unit=0xffff;fixed_syllable=1;playing_syllable=0;dc_x=dc_y=last_sample=0;age=0;current_period_q16=0;random_state=1;
  if(bank_ok){char all[NSX_LYRIC_BYTES];unsigned p=0;for(unsigned i=0;i<128;i++){const char*s=nsx_pronunciation(i);while(*s&&p<NSX_LYRIC_BYTES-2)all[p++]=*s++;if(i<127)all[p++]=',';}all[p]=0;parse_lyrics(all,0);}
 }
 void nsx_midi(uint8_t st,uint8_t a,uint8_t b){
  if((st&15)!=0)return;switch(st&0xf0){case 0x90:nsx_note_on(a,b);break;case 0x80:nsx_note_off(a);break;case 0xe0:bend=a+(b<<7);break;
- case 0xb0:switch(a){case 1:controls[5]=b;break;case 7:volume=b;break;case 11:expression=b;break;case 64:pedal=b>=64;if(!pedal&&release_pending){gate=0;release_pending=0;}break;
+ case 0xb0:switch(a){case 1:nsx_articulation(NSX_ART_VIBRATO_DEPTH,b);break;case 7:volume=b;break;case 11:expression=b;break;case 64:pedal=b>=64;if(!pedal&&release_pending)begin_release();break;
  case 99:nrpn_msb=b;rpn_msb=rpn_lsb=127;break;case 98:nrpn_lsb=b;break;case 101:rpn_msb=b;nrpn_msb=nrpn_lsb=127;break;case 100:rpn_lsb=b;break;
- case 6:if(nrpn_msb==0x70&&nrpn_lsb<16){controls[nrpn_lsb]=b;if(nrpn_lsb==9)nsx_select(b);}else if(rpn_msb==0&&rpn_lsb==0)bend_range=clip(b,0,24);else if(rpn_msb==0&&rpn_lsb==1)tune=b<<7;break;
- case 38:if(rpn_msb==0&&rpn_lsb==1)tune=(tune&0x3f80)|b;break;
- case 120:gate=0;gain_q15=0;for(unsigned k=0;k<3;k++)grains[k].active=0;break;case 121:nsx_reset();break;case 123:gate=0;break;default:break;}break;default:break;}
+ case 6:if(nrpn_msb==0x70&&nrpn_lsb<16){if(nrpn_lsb==9)nsx_select(b);else if(nrpn_lsb!=5&&nrpn_lsb!=6)nsx_articulation(nrpn_lsb,nrpn_lsb==7?(unsigned)b*128u:b);}else if(rpn_msb==0&&rpn_lsb==0)bend_range=clip(b,0,24);else if(rpn_msb==0&&rpn_lsb==1)tune=b<<7;break;
+ case 38:if(rpn_msb==0&&rpn_lsb==1)tune=(tune&0x3f80)|b;else if(nrpn_msb==0x70&&nrpn_lsb==7)nsx_articulation(7,(vibrato_delay_ms&0x3f80)|b);break;
+ case 120:gate=pedal=release_pending=0;articulation_panic();gain_q15=0;for(unsigned k=0;k<3;k++)grains[k].active=0;break;case 121:nsx_reset();break;case 123:nsx_note_off((uint8_t)current_note);break;default:break;}break;default:break;}
 }
 int nsx_sysex(const uint8_t *p,size_t n){
  if(!bank_ok||n<6||p[0]!=0x43||p[1]!=0x79||p[2]!=9)return 0;
@@ -128,7 +146,9 @@ void nsx_render(int16_t *out,unsigned count){
   if(!bank_ok){out[i]=0;continue;}
   if(current_unit<unit_count&&!steady_mode&&((cursor_q8>>8)>=r32(unit(current_unit)+4)))next_source();
   int32_t sp=source_period();period_q16=get_period();if(controls[8])current_period_q16+=(period_q16-current_period_q16)/(1+(int)controls[8]*8);else current_period_q16=period_q16;
-  vib_phase+=(uint32_t)(300000u+(unsigned)controls[4]*7000u);age++;random_state=random_state*1664525u+1013904223u;
+  if(!articulation_samples){articulation_vibrato_tick(gate||(tail_vibrato&&envelope.stage==NSX_ENV_RELEASE),controls[3],controls[4],controls[5]);articulation_frames++;}
+  articulation_samples=(articulation_samples+1)&127u;age++;if(glide_elapsed<glide_length)glide_elapsed++;random_state=random_state*1664525u+1013904223u;
+  unsigned envelope_level=envelope_sample();
   int32_t mix=0;
   if(current_unit<unit_count&&(gate||gain_q15)){
    if(sp<=0&&!steady_mode){mix=source_sample((int)current_slot,current_unit,0,(int)(cursor_q8>>8));}
@@ -140,12 +160,14 @@ void nsx_render(int16_t *out,unsigned count){
    cursor_q8+=source_speed;
    if(steady_mode&&++blend_age>=1800){blend_age=0;steady_a=steady_b;int base=find_unit(current_name,255,0,0);steady_b=base+(int)((random_state>>16)%3);if(steady_b>=36)steady_b=base;cursor_q8%=r32(unit(current_unit)+4)*256;}
   }
-  int target=gate?((int)velocity*volume*expression/127):0;
+  int target=envelope.stage!=NSX_ENV_IDLE?((int)velocity*volume*expression/127):0;
   if(controls[2]&&gate)target=target*(int)(age<2205?age:2205)/2205;
   gain_q15+=clip(target-gain_q15,-64,128);
   int y=mix-dc_x+(dc_y*32723>>15);dc_x=mix;dc_y=clip(y,-65536,65535);
-  if(controls[10]&&gate)y+=(int32_t)(random_state>>20)*controls[10]/1024-2*controls[10];
-  y=(y*gain_q15)>>14; // Q14 gain, leaves headroom
+  // White Noise Control scales recorded unvoiced material, rather than adding
+  // a synthetic hiss to every vowel. 64 is unity; endpoints are +/-24 dB.
+  if(current_unit<unit_count&&sp<=0)y=(int)(((int64_t)y*noise_gain_q12[controls[10]])>>12);
+  y=(int)(((int64_t)y*gain_q15*envelope_level)>>29); // Q14 gain, leaves headroom
   last_sample=clip(y,-32768,32767);out[i]=(int16_t)last_sample;
  }
 }
@@ -165,7 +187,44 @@ int nsx_init(const uint8_t *bank,size_t size){
   if(d[27])for(unsigned j=0;j<blocks;j++){const uint8_t*b=vb+r32(d)+j*68;if(b[2]>88||b[3])return 0;}
  }
  for(unsigned i=0;i<36;i++){for(unsigned k=0;k<r32(unit(i)+4);k++)steady[i][k]=(int16_t)r16(vb+r32(unit(i))+k*2);}
+ for(unsigned i=0;i<4;i++){unsigned descriptor=r32(vb+32)+i*8,n=r32(vb+descriptor+4),offset=r32(vb+descriptor);if(n<2||n>256||!bound(offset,n*4))return 0;for(unsigned k=0;k<n;k++){int32_t value=(int32_t)r32(vb+offset+k*4);if(value<-(600<<16)||value>(600<<16))return 0;}art_curves[i]=vb+offset;art_curve_lengths[i]=n;}
  cache_id[0]=cache_id[1]=-1;bank_ok=1;nsx_reset();return 1;
 }
 
 const uint8_t *nsx_factory_lyrics(void){return bank_ok&&r32(vb+52)==1024?vb+r32(vb+48):0;}
+int32_t nsx_vibrato_q16(void){return articulation_vibrato_q16;}
+
+void nsx_articulation(unsigned parameter,unsigned value){
+ if(parameter==7){vibrato_delay_ms=value>16383?16383:value;return;}
+ if(parameter>=16)return;
+ if(parameter==1||parameter==2)value=value?1:0;
+ else if(parameter==3){value=value>3?3:value;vibrato_position=vibrato_reverse=0;}
+ else if(parameter==12)value=value>2?2:value;
+ else if(parameter!=4&&parameter!=5&&parameter!=8&&parameter!=10)return;
+ controls[parameter]=(uint8_t)(value>127?127:value);
+}
+unsigned nsx_articulation_get(unsigned parameter){return parameter==7?vibrato_delay_ms:parameter<16?controls[parameter]:0;}
+void nsx_art_debug(nsx_art_debug_t*out){
+ for(unsigned i=0;i<4;i++)out->adsr[i]=adsr_ms[i];out->stage=envelope.stage;out->level=envelope.level;
+ out->progress=envelope.length?(envelope.elapsed*32768u/envelope.length):0;
+ out->vibrato_type=controls[3];out->vibrato_rate=controls[4];out->vibrato_depth=controls[5];out->vibrato_delay=vibrato_delay_ms;
+ out->auto_pitch=controls[1];out->auto_dynamics=controls[2];out->portamento=controls[8];out->noise=controls[10];out->connection=controls[12];out->hold=pedal;out->release_unit=release_unit;out->pitch_cents=articulation_vibrato_q16/65536;
+}
+void nsx_panel_button(unsigned button){
+ static unsigned remembered_depth=64;
+ switch(button){
+ case 2:nsx_articulation(10,controls[10]>=127?0:controls[10]+32u);break;
+ case 3:nsx_articulation(1,!controls[1]);break;
+ case 4:nsx_articulation(2,!controls[2]);break;
+ case 5:if(controls[5]){remembered_depth=controls[5];nsx_articulation(5,0);}else nsx_articulation(5,remembered_depth);break;
+ case 6:nsx_articulation(3,(controls[3]+1)&3u);break;
+ case 7:nsx_articulation(4,controls[4]>=112?16:controls[4]+16u);break;
+ case 8:nsx_articulation(7,vibrato_delay_ms>=1000?0:vibrato_delay_ms+250u);break;
+ case 9:nsx_midi(0xb0,120,0);break;
+ case 10:nsx_articulation(12,(controls[12]+1)%3);break;
+ case 11:nsx_articulation(8,controls[8]>=127?0:controls[8]+32u);break;
+ case 12:nsx_midi(0xb0,64,pedal?0:127);break;
+ case 13:remembered_depth=controls[5]>=112?16:controls[5]+16u;nsx_articulation(5,remembered_depth);break;
+ default:break;
+ }
+}

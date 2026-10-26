@@ -23,13 +23,25 @@
 <p>Next: <strong id="next-syllable">—</strong></p>
 <p><strong id="playing">Released</strong> <span id="pitch"></span></p>
 <canvas id="scope" width="720" height="180" aria-label="Live output waveform"></canvas>
+<details><summary>Articulation and ADSR</summary>
+<p class="small">These controls change the live preview. On the FM-1, knobs 1–4 set A/D/S/R; the buttons below use the same mappings.</p>
+<p class="small">Vibrato uses the original curves, and key release uses recorded endings. Automatic pitch/dynamics and some transition timing remain native approximations. ADSR is an added FM-1 envelope.</p>
+<div class="adsr-controls">
+<label>Attack <output id="adsr-value-0">0 ms</output><input id="adsr-0" type="range" min="0" max="2000" value="0"></label>
+<label>Decay <output id="adsr-value-1">0 ms</output><input id="adsr-1" type="range" min="0" max="2000" value="0"></label>
+<label>Sustain <output id="adsr-value-2">100%</output><input id="adsr-2" type="range" min="0" max="100" value="100"></label>
+<label>Release <output id="adsr-value-3">100 ms</output><input id="adsr-3" type="range" min="0" max="4000" value="100"></label>
+</div>
+<canvas id="envelope" width="720" height="160" aria-label="ADSR shape and live envelope position"></canvas>
+<p id="articulation-state" class="small"></p><div id="articulation-buttons" class="row"></div>
+</details>
 <div class="keys" id="keys" aria-label="Keyboard"></div>
 <div class="row"><button id="oct-down">Octave −</button><button id="oct-up">Octave +</button><button id="panic">Stop sound</button></div>
 <p class="small">Computer keys A W S E D F T G Y H U J K O L P ; ' play chromatic notes. Each new key press advances one syllable; each lyric loops. On the FM-1, ALGORITHM selects lyric 0–15. Lyric 0 is manual: SELECT chooses a syllable. For lyrics 1–15, turn SELECT left to restart; right is reserved. PRESETS switches hiragana, katakana and romaji.</p>
 </div></section>
 <section aria-labelledby="install-title"><h2 id="install-title">3. Install on an FM-1</h2>
 <p>The debug screen shows the last played and upcoming syllables, MIDI note, vocal source unit, output waveform and rendering time.</p>
-<p class="notice">FM-1_941 includes the startup fix and passes retained-RAM boot tests in the emulator. A physical cold-boot check is still pending. Vocal timing and expression remain experimental.</p>
+<p class="notice">FM-1_942 adds live articulation controls, recorded release transitions and ADSR. The startup fix is retained. Vocal timing and expression remain experimental.</p>
 <label class="check"><input id="ack" type="checkbox">I want to test this experimental build, have backed up my FM-1, and have reviewed the recovery instructions below.</label>
 <button id="install" disabled>Connect and install</button>
 <div id="install-progress" hidden>

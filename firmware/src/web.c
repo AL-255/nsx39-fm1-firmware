@@ -14,3 +14,6 @@ void web_render(void){nsx_render(web_audio,128);}
 unsigned web_last(void){performance_state_t s;performance_snapshot(&s);return s.has_last?s.last:128;}
 unsigned web_next(void){performance_state_t s;performance_snapshot(&s);return s.next;}
 unsigned web_position(void){performance_state_t s;performance_snapshot(&s);return s.cursor;}
+
+static nsx_art_debug_t web_art;
+unsigned web_art_ptr(void){nsx_art_debug(&web_art);return (unsigned)(uintptr_t)&web_art;}
