@@ -5,6 +5,8 @@
 #define FELUCCA_CDC 0
 #define FELUCCA_UAC 0
 #define FELUCCA_ID "FM-1_939"
+// Miku cyan #39C5BB, quantized to the LCD's RGB565 format.
+#define UI_ACCENT 0x3e37u
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
 #include "fm1_time.h"
 // Always halt a possibly running second core inherited from previous firmware.
@@ -75,19 +77,19 @@ static void label_num(unsigned x,unsigned y,const char*label,unsigned n){char b[
 static void screen(void){
  nsx_debug_t state;int16_t wave[240];unsigned w;__asm__ volatile("cli":::"memory");nsx_debug(&state);w=scope_w;for(unsigned i=0;i<240;i++)wave[i]=scope[(w-240+i)&511];__asm__ volatile("sti":::"memory");
  for(unsigned i=0;i<240*240;i++)canvas[i]=0x0841;
- put_text(10,8,"NSX39 VOCAL DEBUG",0x5ff5,1);
+ put_text(10,8,"NSX39 VOCAL DEBUG",UI_ACCENT,1);
  if(!voice_ready){put_text(10,40,"NO VALID VOICE BANK",0xfca0,1);put_text(10,64,"Generate with your dump",0xffff,1);}
  else{
-  label_num(10,30,"SELECTED ",nsx_selected());put_text(10,47,nsx_pronunciation(nsx_selected()),0xffe0,2);
-  put_text(10,73,state.active?"PLAYING":"RELEASED",state.active?0x5ff5:0xad55,1);
+  label_num(10,30,"SELECTED ",nsx_selected());put_text(10,47,nsx_pronunciation(nsx_selected()),UI_ACCENT,2);
+  put_text(10,73,state.active?"PLAYING":"RELEASED",state.active?UI_ACCENT:0xad55,1);
   label_num(96,73,"MIDI ",state.note);label_num(162,73,"VEL ",state.velocity);
-  label_num(10,89,"SOUNDED ",state.selected);put_text(96,89,nsx_pronunciation(state.selected),0xffe0,1);
-  label_num(10,105,"UNIT ",state.unit);put_text(84,105,nsx_phoneme(state.source),0xffff,1);put_text(120,105,"->",0xad55,1);put_text(144,105,nsx_phoneme(state.target),0xffff,1);put_text(184,105,state.steady?"LOOP":"ONSET",0x5ff5,1);
+  label_num(10,89,"SOUNDED ",state.selected);put_text(96,89,nsx_pronunciation(state.selected),UI_ACCENT,1);
+  label_num(10,105,"UNIT ",state.unit);put_text(84,105,nsx_phoneme(state.source),0xffff,1);put_text(120,105,"->",0xad55,1);put_text(144,105,nsx_phoneme(state.target),0xffff,1);put_text(184,105,state.steady?"LOOP":"ONSET",UI_ACCENT,1);
  }
  put_text(10,124,"OUTPUT WAVEFORM / 10.9 ms",0xad55,1);
  for(unsigned x=0;x<240;x++)canvas[170*240+x]=0x2965;
  for(unsigned y=138;y<204;y++)for(unsigned x=0;x<240;x+=48)canvas[y*240+x]=0x18e3;
- int last=170;for(unsigned x=0;x<240;x++){int y=170-wave[x]*31/32768;y=clip(y,138,202);int a=last<y?last:y,b=last>y?last:y;for(int q=a;q<=b;q++)canvas[q*240+x]=0x5ff5;last=y;}
+ int last=170;for(unsigned x=0;x<240;x++){int y=170-wave[x]*31/32768;y=clip(y,138,202);int a=last<y?last:y,b=last>y?last:y;for(int q=a;q<=b;q++)canvas[q*240+x]=UI_ACCENT;last=y;}
  label_num(10,208,"RENDER us ",render_us);label_num(132,208,"MAX ",render_max_us);label_num(10,220,"LATE ",audio_late);label_num(96,220,"OCT ",octave);
  put_text(10,231,"SELECT: syllable  KEYS: pitch",0xad55,1);
  lcd_sync(); // DMA must finish before its source buffer can be reused.

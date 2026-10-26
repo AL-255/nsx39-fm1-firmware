@@ -21,7 +21,7 @@ $('generate').onclick=async()=>{
  };worker.postMessage({dump,template:copy,manifest},[dump,copy]);
  }catch(e){status(e.message);controls();}
 };
-function draw(wave,start){const c=$('scope'),x=c.getContext('2d');x.fillStyle='#08120c';x.fillRect(0,0,c.width,c.height);x.strokeStyle='#294334';x.beginPath();x.moveTo(0,90);x.lineTo(720,90);x.stroke();x.strokeStyle='#8bdcb0';x.beginPath();for(let i=0;i<240;i++){const y=90-wave[(start+i)%240]*78;i?x.lineTo(i*3,y):x.moveTo(0,y);}x.stroke();}
+function draw(wave,start){const c=$('scope'),x=c.getContext('2d');x.fillStyle='#08120c';x.fillRect(0,0,c.width,c.height);x.strokeStyle='#294334';x.beginPath();x.moveTo(0,90);x.lineTo(720,90);x.stroke();x.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--accent').trim();x.beginPath();for(let i=0;i<240;i++){const y=90-wave[(start+i)%240]*78;i?x.lineTo(i*3,y):x.moveTo(0,y);}x.stroke();}
 $('listen').onclick=async()=>{
  try{panic();if(audio)await audio.close();audio=new AudioContext();await audio.audioWorklet.addModule('voice-worklet.js');node=new AudioWorkletNode(audio,'nsx-voice',{numberOfInputs:0,numberOfOutputs:1,outputChannelCount:[2]});node.connect(audio.destination);node.port.onmessage=({data})=>{if(data.ready)node.port.postMessage({select:selected});if(data.wave)draw(data.wave,data.scopeIndex%240);if(data.error){status(`Preview failed: ${data.error}`);panic();}};const r=await fetch('assets/voice-engine.wasm');if(!r.ok)throw Error('Preview engine unavailable');node.port.postMessage({init:true,wasm:await r.arrayBuffer(),bank:result.bank});await audio.resume();$('preview').hidden=false;$('listen').textContent='Restart audio preview';
  }catch(e){status(`Cannot start preview: ${e.message}`);}
