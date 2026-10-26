@@ -10,3 +10,10 @@ test('phase-specific completion gate requires a prior read',async()=>{
 });
 test('completion response send failure cannot report success',async()=>{const l=link([request(0,8),request(0xf0000000)]);const old=l.send;l.send=function(p){old.call(this,p);return this.sent.length<2;};const r=await new Updater({}).serve(l,new Uint8Array(16),0xf0000000,1);assert.equal(r.finished,false);assert.equal(r.lost,true);});
 test('correct read then finish succeeds with 8-byte success response',async()=>{const l=link([request(0,8),request(0xf0000000)]);const r=await new Updater({}).serve(l,new Uint8Array(16),0xf0000000,1);assert.equal(r.finished,true);assert.equal(r.served,1);const data=unpack7(l.sent[1].slice(1,-1));assert.deepEqual(data.slice(14,22),[...new TextEncoder().encode('success'),0]);});
+test('progress reports actual sent bytes, including retries, after successful sends only',async()=>{
+ const updates=[],l=link([request(0,8),request(4,8),request(4,8),request(0xf0000000)]);
+ await new Updater({}).serve(l,new Uint8Array(16),0xf0000000,1,(...args)=>updates.push(args));
+ assert.deepEqual(updates.map(([n,address,d])=>[n,address,d.length,d.bytesSent,d.requests]),[[1,0,8,8,1],[2,4,8,16,2],[3,4,8,24,3]]);
+ assert(updates.every(([,address,d])=>d.address===address&&d.elapsedMs>=0));
+ let called=false;await new Updater({}).serve(link([request(0,8)],false),new Uint8Array(16),0xf0000000,1,()=>called=true);assert.equal(called,false);
+});

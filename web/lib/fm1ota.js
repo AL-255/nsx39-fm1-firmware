@@ -147,7 +147,8 @@ export class Updater {
   // serve read requests until the device asks for one of the finish addresses; stops early
   // when the port disappears (lost: true) instead of waiting out idleMs
   async serve(link, image, finishAddr, idleMs, onProgress) {
-    let served = 0, last = Date.now();
+    const started = Date.now();
+    let served = 0, bytesSent = 0, last = started;
     for (;;) {
       const pkt = await link.read(1000);
       if (!pkt) {
@@ -169,7 +170,8 @@ export class Updater {
         return { served, finished: false, lost: true };
       }
       served++;
-      if (onProgress) onProgress(served, r.addr);
+      bytesSent += r.len;
+      if (onProgress) onProgress(served, r.addr, { requests: served, address: r.addr, length: r.len, bytesSent, elapsedMs: Date.now() - started });
     }
   }
 
@@ -180,10 +182,10 @@ export class Updater {
     if (!dev) throw fail("notfound", "FM-1 not found (USB cable, and no other app using it?)");
     const [model] = product.split("_");
     if (dev.id.model !== model) { dev.link.close(); throw fail("model", `the device is ${dev.id.text}, the package is for ${product}`); }
-    step("start", dev.id.text);
+    step("start", dev.id.text, { port: dev.name });
     dev.link.send(UPGRADE);
     await sleep(2000);
-    const s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n) => step("verify", n));
+    const s1 = await this.serve(dev.link, image, 0xE0000000, 8000, (n, _addr, detail) => step("verify", n, detail));
     dev.link.close();
     if (!s1.finished) throw fail(s1.lost ? "lost" : "stopped", `the device ${s1.lost ? "was disconnected" : "stopped"} after ${s1.served} requests: nothing was written`);
     step("loader");
@@ -204,9 +206,10 @@ export class Updater {
 
   // step 2 with the loader found by find()/waitFor()
   async write(ota, image, step) {
+    step("write", 0, { device: ota.id.text, port: ota.name });
     ota.link.send(UPGRADE);
     await sleep(2000);
-    const s2 = await this.serve(ota.link, image, 0xF0000000, 180000, (n) => step("write", n));
+    const s2 = await this.serve(ota.link, image, 0xF0000000, 180000, (n, _addr, detail) => step("write", n, detail));
     ota.link.close();
     return s2;
   }
@@ -217,6 +220,7 @@ export class Updater {
     const ota = await this.find((id) => model ? id.model === "ota-" + model : IS_OTA(id));
     if (!ota) return false;
     const step = onStep || (() => {});
+    step("resume", ota.id.text, { port: ota.name });
     const result = await this.write(ota, image, step);
     if (!result.finished) return false;
     if (product) {

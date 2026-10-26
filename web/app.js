@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import {Updater} from './lib/fm1ota.js';
+import {InstallProgress,renderInstallProgress} from './lib/install-progress.js';
 const $=id=>document.getElementById(id);
 let template,manifest,result,worker,downloadURL,audio,node,selected=0,octave=1,installing=false,lyric=0,labels;
 const status=message=>{$('status').textContent=message;};
@@ -41,9 +42,10 @@ window.addEventListener('keyup',e=>noteOff(e.code));window.addEventListener('blu
 $('oct-down').onclick=()=>{panic();octave=Math.max(0,octave-1);};$('oct-up').onclick=()=>{panic();octave=Math.min(2,octave+1);};$('panic').onclick=panic;$('ack').onchange=controls;
 window.addEventListener('beforeunload',e=>{if(installing){e.preventDefault();e.returnValue='Firmware installation is in progress.';}});
 $('install').onclick=async()=>{
- if(!result||installing||!$('ack').checked||!navigator.requestMIDIAccess)return;installing=true;panic();controls();let wake;
- const progress=(phase,info)=>{$('install-status').textContent=({start:'Connected. Checking package…',verify:'Staging update loader…',loader:'Waiting for update loader…',write:'Checking and writing application sectors…',reboot:'Waiting for firmware to reboot…',done:`Installed: ${info}`})[phase]||phase;};
- try{wake=navigator.wakeLock?await navigator.wakeLock.request('screen').catch(()=>null):null;const access=await navigator.requestMIDIAccess({sysex:true});const updater=new Updater(access);if(!await updater.resume(result.image,progress,result.product))await updater.install(result.image,result.product,progress);}
- catch(e){$('install-status').textContent=`Installation stopped: ${e.message} Keep the generated package and follow the recovery instructions.`;}
- finally{await wake?.release();installing=false;controls();}
+ if(!result||installing||!$('ack').checked||!navigator.requestMIDIAccess)return;installing=true;panic();controls();let wake,view,timer;
+ const render=()=>{if(view)renderInstallProgress(document,view.snapshot());};
+ const progress=(phase,info,detail)=>{view.event(phase,info,detail);render();};
+ try{view=new InstallProgress(result.bytes);render();timer=setInterval(render,500);wake=navigator.wakeLock?await navigator.wakeLock.request('screen').catch(()=>null):null;const access=await navigator.requestMIDIAccess({sysex:true});const updater=new Updater(access);if(!await updater.resume(result.image,progress,result.product))await updater.install(result.image,result.product,progress);}
+ catch(e){const message=`${e.message} Keep the generated package and follow the recovery instructions.`;if(view){view.stop(message);render();}else $('install-status').textContent=`Installation stopped: ${message}`;}
+ finally{clearInterval(timer);render();await wake?.release();installing=false;controls();}
 };

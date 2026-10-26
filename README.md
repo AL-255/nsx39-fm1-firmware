@@ -127,6 +127,12 @@ can write only the five OTA staging sectors. No NSX39 command can write flash.
 A failed or interrupted transfer must be resumed with the **same generated
 package**. Read [update safety](docs/UPDATES.md) before hardware tests.
 
+The web installer shows progress for loader staging, full-package verification,
+application transfer, and restart/identity confirmation. It also shows the device,
+bytes sent, request count, elapsed time, average transfer rate and last response
+age. Waiting for USB reconnection uses an indeterminate bar; success requires the
+expected firmware identity. Percentages describe the current transfer stage.
+
 Tests cover lyric stepping/looping/rewind, reserved SELECT direction, MIDI channel
 isolation, preview state, cross-language codec agreement, malformed input and completion gates,
 all 128 pronunciations, C sanitizers, package round trips, and exact native/WASM

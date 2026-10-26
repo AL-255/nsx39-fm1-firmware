@@ -46,6 +46,16 @@ If interrupted, regenerate the same package from the same dump/build, reconnect,
 and press Install. The installer checks for a waiting loader and resumes before
 starting a new session. A final matching identity is required before reporting
 success. Holding OCT− and OCT+ for five seconds on this app enters UBOOT.
+
+The browser displays separate progress for loader staging, package verification,
+application transfer and restart. Coverage is calculated from distinct requested
+byte ranges in the actual package; retries count toward traffic statistics but
+do not advance the bar twice. These are transfer measurements, not acknowledgements
+of individual flash writes. The bar stays below 100% until the device reconnects
+with the expected identity. USB reconnection waits are indeterminate, with elapsed
+time and last-response age visible. Failures preserve the last progress and the
+recovery message. Loader behavior, timeouts and flash boundaries are unchanged.
+
 If the device does not enumerate, use the documented
 [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter) recovery path;
 additional hardware may be needed. Do not assume every failure is USB-recoverable.
