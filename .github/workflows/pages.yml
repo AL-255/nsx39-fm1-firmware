@@ -23,7 +23,7 @@ jobs:
       - name: Host build prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-18 lld-18 fonts-dejavu-core
+          sudo apt-get install -y clang-18 lld-18 fonts-dejavu-core fonts-noto-cjk
           python -m pip install Pillow==11.3.0
       - name: Cache pinned cross compiler and SDK
         uses: actions/cache@v4
@@ -47,7 +47,8 @@ jobs:
           AC79_SDK: ${{ github.workspace }}/.cache/ac79-sdk
         run: |
           npm test
-          python -m unittest discover -s tests -p recovery_test.py
+          python -m unittest discover -s tests -p '*_test.py'
+          python vendor/felucca/tests/install_test.py
           python tools/test_updater.py
       - name: Boot real firmware with zero and dirty SRAM
         run: python tools/test_boot.py

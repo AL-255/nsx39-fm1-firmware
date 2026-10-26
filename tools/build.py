@@ -19,6 +19,7 @@ def run(args):
 def tool(name,*args):return run([TC/name,*args])
 def cc(src,out):tool('pi32v2/bin/clang','-target','pi32v2','-Os','-ffunction-sections','-fdata-sections','-fno-builtin','-Wall','-Wno-unused-function','-Ifirmware/include','-Ivendor/felucca/firmware/hal','-Ibuild/gen','-c',src,'-o',out)
 run([sys.executable,'tools/gen_tables.py'])
+run([sys.executable,'tools/gen_label_font.py'])
 # Rasterize a redistributable font from the OS; shipped as source data with notice.
 font=Path('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf')
 from PIL import Image,ImageFont,ImageDraw
@@ -76,9 +77,9 @@ body=head(pkg.crc16(raw),len(raw),0x01c0a800,0,b'usb_hid_ota.bin')+blocks
 ota=head(pkg.crc16(body),32,len(body),0x41,b'usb_hid_ota.bin')+body
 (ldr/'ota.bin').write_bytes(ota)
 pkg.SDK=SDK
-template=pkg.ufw(pkg.flash_image(app,pkg.KEY),ota,'FM-1_940')
+template=pkg.ufw(pkg.flash_image(app,pkg.KEY),ota,'FM-1_941')
 (OUT/'template.fwsc').write_bytes(template)
-manifest={'format':1,'product':'FM-1_940','version':'0.1.1-debug','bankOffset':bank_offset,'bankCapacity':0x78000,'appBytes':len(app),'templateSha256':hashlib.sha256(template).hexdigest(),'hardwareValidated':False,'compatibility':'experimental-native-vocals','loaderSource':'hugelton/Felucca@440e62ce8a33d9bb285ab6bbca9a0fd50e459648','ramBytes':sym('_bss_end')-0x1c08000,'poolBytes':sym('_pool_end')-sym('_pool_start')}
+manifest={'format':1,'product':'FM-1_941','version':'0.2.0-debug','bankOffset':bank_offset,'bankCapacity':0x78000,'appBytes':len(app),'templateSha256':hashlib.sha256(template).hexdigest(),'hardwareValidated':False,'compatibility':'experimental-native-vocals','loaderSource':'hugelton/Felucca@440e62ce8a33d9bb285ab6bbca9a0fd50e459648','ramBytes':sym('_bss_end')-0x1c08000,'poolBytes':sym('_pool_end')-sym('_pool_start')}
 if manifest['ramBytes']>72*1024-4096:sys.exit('Insufficient RAM headroom')
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print(json.dumps(manifest,indent=2))

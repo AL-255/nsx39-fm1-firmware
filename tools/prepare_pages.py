@@ -11,13 +11,13 @@ template=(R/'build/template.fwsc').read_bytes()
 if hashlib.sha256(template).hexdigest()!=manifest['templateSha256']:raise SystemExit('Template hash mismatch')
 # Prove the compiled reserve is empty using the package parser in a separate test.
 out.mkdir(parents=True,exist_ok=True)
-for rel in ['index.html','style.css','app.js','worker.js','voice-worklet.js','lib/bank.js','lib/generator.js','lib/fm1pkg.js','lib/fm1ota.js']:
+for rel in ['index.html','style.css','app.js','worker.js','voice-worklet.js','syllables.json','lib/bank.js','lib/generator.js','lib/fm1pkg.js','lib/fm1ota.js']:
  (out/rel).parent.mkdir(parents=True,exist_ok=True)
  shutil.copyfile(R/'web'/rel,out/rel)
 (out/'assets').mkdir(exist_ok=True);(out/'licenses').mkdir(exist_ok=True)
-for source,dest in [('build/template.fwsc','assets/template.fwsc'),('build/manifest.json','assets/manifest.json'),('build/voice-engine.wasm','assets/voice-engine.wasm'),('LICENSE','licenses/GPL-3.0.txt'),('vendor/Apache-2.0.txt','licenses/Apache-2.0.txt'),('vendor/DejaVu-LICENSE.txt','licenses/DejaVu-LICENSE.txt')]:shutil.copyfile(R/source,out/dest)
+for source,dest in [('build/template.fwsc','assets/template.fwsc'),('build/manifest.json','assets/manifest.json'),('build/voice-engine.wasm','assets/voice-engine.wasm'),('LICENSE','licenses/GPL-3.0.txt'),('vendor/Apache-2.0.txt','licenses/Apache-2.0.txt'),('vendor/DejaVu-LICENSE.txt','licenses/DejaVu-LICENSE.txt'),('vendor/Noto-CJK-LICENSE.txt','licenses/Noto-CJK-LICENSE.txt')]:shutil.copyfile(R/source,out/dest)
 # Public binaries have accessible corresponding source even if the GitHub repo is private.
-source_files=[R/'LICENSE',R/'README.md',R/'package.json',R/'.gitignore']
+source_files=[R/'LICENSE',R/'README.md',R/'package.json',R/'.gitignore',R/'web/syllables.json']
 allowed={'.c','.h','.S','.ld','.mjs','.py','.sh','.js','.css','.html','.md','.yml','.txt'}
 for directory in ['firmware','vendor','web','tools','tests','docs','.github']:
  for p in sorted((R/directory).rglob('*')):

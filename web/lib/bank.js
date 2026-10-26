@@ -87,9 +87,20 @@ export async function extractDump(input) {
   }
   if(pronunciations.length!==128)throw Error('Expected 128 pronunciations');
   const curves=[];for(let o=0x1bdecc;o<0x1be180;){const n=u32(o+4);if(n%4||o+8+n>0x1be180)throw Error('Invalid vibrato curve');curves.push(Array.from({length:n/4},(_,i)=>v.getInt32(o+8+i*4)));o+=8+n;}
-  return {units,pronunciations,curves,sha256:hash};
+  // Factory defaults (controller address 0x2001de40). Bank 0 is replaced by
+  // manual selection on the FM-1. Preserve banks 1..15, including user copies.
+  const factoryLyrics=b.slice(0x1de40,0x1e240);
+  validateFactoryLyrics(factoryLyrics);
+  return {units,pronunciations,curves,factoryLyrics,sha256:hash};
 }
-export function packBank({units,pronunciations,curves}) {
+export function validateFactoryLyrics(bytes) {
+  if(bytes.length!==1024)throw Error('Invalid factory lyric bank size');
+  for(let bank=0;bank<16;bank++){
+    let end=0;while(end<64&&bytes[bank*64+end]<128)end++;
+    if(!end||end===64||bytes.subarray(bank*64+end,(bank+1)*64).some(x=>x!==0x80))throw Error('Unsupported factory lyric return marker');
+  }
+}
+export function packBank({units,pronunciations,curves,factoryLyrics}) {
   const bytes=new Uint8Array(CAPACITY),v=new DataView(bytes.buffer),w16=(o,x)=>v.setUint16(o,x,true),w32=(o,x)=>v.setUint32(o,x>>>0,true);
   const names=[...new Set(units.flatMap(u=>[u.source,u.target]).filter(Boolean))];
   let p=64+units.length*40;const nameOff=p;
@@ -108,8 +119,9 @@ export function packBank({units,pronunciations,curves}) {
     else for(let b=0;b<blocks;b++){const pcm=u.pcm.subarray(b*128,Math.min(u.pcm.length,b*128+128)),packed=encodeBlock(pcm);bytes.set(packed,p);p+=68;const decoded=decodeBlock(packed);for(let k=0;k<pcm.length;k++){squared+=(decoded[k]-pcm[k])**2;signal+=pcm[k]**2;total++;}}
     for(const x of u.pitch){w32(p,x);p+=4;}for(const x of u.stretch){w32(p,x);p+=4;}
   }
+  if(factoryLyrics){validateFactoryLyrics(factoryLyrics);p=(p+3)&~3;w32(48,p);w32(52,1024);bytes.set(factoryLyrics,p);p+=1024;}
   if(p>CAPACITY)throw Error(`Voice bank ${p} exceeds the ${CAPACITY}-byte slot`);
-  bytes.set(new TextEncoder().encode('NSXV'),0);w32(4,1);w32(8,p);w32(16,units.length);w32(20,names.length);w32(24,nameOff);w32(28,pronOff);w32(32,curveOff);w32(36,22050);w32(40,128);w32(44,68);
+  bytes.set(new TextEncoder().encode('NSXV'),0);w32(4,2);w32(8,p);w32(16,units.length);w32(20,names.length);w32(24,nameOff);w32(28,pronOff);w32(32,curveOff);w32(36,22050);w32(40,128);w32(44,68);
   w32(12,crc32(bytes.subarray(0,p)));
   return {bytes,used:p,samples:total,snrDB:10*Math.log10(signal/Math.max(1,squared)),names};
 }

@@ -22,6 +22,7 @@ typedef __SIZE_TYPE__ size_t;
 #define NSX_MAX_SYLLABLES 128u
 int nsx_init(const uint8_t *bank, size_t size);
 void nsx_reset(void);
+const uint8_t *nsx_factory_lyrics(void);
 void nsx_midi(uint8_t status, uint8_t a, uint8_t b);
 int nsx_sysex(const uint8_t *data, size_t size); // excludes F0/F7
 void nsx_note_on(uint8_t note, uint8_t velocity);

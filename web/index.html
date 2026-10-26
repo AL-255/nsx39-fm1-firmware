@@ -7,28 +7,32 @@
 <title>NSX39 → FM-1 · Vocal debug</title><link rel="stylesheet" href="style.css">
 </head>
 <body><main>
-<header><p class="eyebrow">FM-1 / EXPERIMENTAL DEBUG BUILD</p><h1>NSX39 vocal firmware</h1><p>Choose a syllable. Play it on the keyboard. See its waveform.</p></header>
+<header><p class="eyebrow">FM-1 / EXPERIMENTAL DEBUG BUILD</p><h1>NSX39 vocal firmware</h1><p>Play a syllable or step through the original lyrics. See and hear each note.</p></header>
 <section aria-labelledby="generate-title"><h2 id="generate-title">1. Generate with your own dump</h2>
-<p>Open your NSX39 SPI-flash dump. Its vocal data is extracted and compressed locally. Your file stays in this browser.</p>
+<p>Open your NSX39 SPI-flash dump. Its vocal data and original lyric banks are extracted and compressed locally. Your file stays in this browser.</p>
 <label class="file">NSX39 dump (.bin, 2 MiB)<input id="dump" type="file" accept=".bin,.BIN,application/octet-stream"></label>
 <button id="generate" disabled>Generate firmware</button><p id="status" role="status" aria-live="polite">Loading firmware template…</p>
 <div id="result" hidden><p id="stats"></p><a id="download" class="button" download="nsx39-fm1-debug.fwsc">Download .fwsc</a><details><summary>Build details</summary><pre id="details"></pre></details></div>
 </section>
 <section aria-labelledby="preview-title"><h2 id="preview-title">2. Listen before installing</h2><p>This preview runs the same native vocal engine as the firmware.</p>
 <button id="listen" disabled>Start audio preview</button><div id="preview" hidden>
-<label>Syllable<select id="syllable" aria-label="Selected syllable"></select></label>
+<label>Lyric<select id="lyric" aria-label="Selected lyric"></select></label>
+<button id="rewind" disabled>Return to beginning</button>
+<label>Syllable (manual mode)<select id="syllable" aria-label="Selected syllable"></select></label>
+<p class="small">Last played</p><p id="last-syllable" class="played">—</p>
+<p>Next: <strong id="next-syllable">—</strong></p>
 <p><strong id="playing">Released</strong> <span id="pitch"></span></p>
 <canvas id="scope" width="720" height="180" aria-label="Live output waveform"></canvas>
 <div class="keys" id="keys" aria-label="Keyboard"></div>
 <div class="row"><button id="oct-down">Octave −</button><button id="oct-up">Octave +</button><button id="panic">Stop sound</button></div>
-<p class="small">Computer keys A W S E D F T G Y H U J K O L P ; ' play chromatic notes. The FM-1’s SELECT encoder chooses the syllable; its 27 keys trigger and pitch it.</p>
+<p class="small">Computer keys A W S E D F T G Y H U J K O L P ; ' play chromatic notes. Each new key press advances one syllable; each lyric loops. On the FM-1, ALGORITHM selects lyric 0–15. Lyric 0 is manual: SELECT chooses a syllable. For lyrics 1–15, turn SELECT left to restart; right is reserved. PRESETS switches hiragana, katakana and romaji.</p>
 </div></section>
 <section aria-labelledby="install-title"><h2 id="install-title">3. Install on an FM-1</h2>
-<p>The debug screen shows the selected and played syllables, MIDI note, vocal source unit, output waveform and rendering time.</p>
-<p class="notice">Hardware installation is temporarily disabled: the first physical test produced a black screen and returned to UBOOT. Diagnosis and recovery are in progress. This vocal engine is a native reimplementation; it does not yet reproduce all NSX39 timing and expression behavior exactly.</p>
+<p>The debug screen shows the last played and upcoming syllables, MIDI note, vocal source unit, output waveform and rendering time.</p>
+<p class="notice">Hardware installation is temporarily disabled: the first physical test produced a black screen and returned to UBOOT. Recovery succeeded. A boot fix is included; the new build awaits a physical cold-boot check. This vocal engine is a native reimplementation; it does not yet reproduce all NSX39 timing and expression behavior exactly.</p>
 <label class="check"><input id="ack" type="checkbox" disabled>I want to test this experimental build, have backed up my FM-1, and have reviewed the recovery instructions below.</label>
-<button id="install" disabled>Installation disabled — boot failure under investigation</button><p id="install-status" role="status" aria-live="polite">Do not flash this build. Generation and audio preview remain available for emulator testing.</p>
+<button id="install" disabled>Installation disabled — awaiting hardware validation</button><p id="install-status" role="status" aria-live="polite">The fixed candidate is available for generation, audio preview and emulator testing. A physical cold-boot check is pending.</p>
 <details><summary>Update and recovery instructions</summary><p>Use a reliable USB data cable and stable power. Close MIDI software and other installer tabs. Do not disconnect the FM-1, close this page, or let the computer sleep during installation.</p><p>The open-source Felucca loader checks the board layout, chip key and package CRC before erasing. It writes the application region, preserves the flash head, verifies written sectors, and supports resuming an interrupted update. These checks cannot guarantee recovery from every hardware or power failure.</p><p>If interrupted, regenerate the <strong>same package</strong>, reconnect and use the same Install button; it first checks for a waiting update loader. Do not flash a different image to “try it.” If the unit cannot enumerate, see <a href="https://github.com/kurogedelic/FM-1-transporter">FM-1-transporter</a>. On this firmware, holding both OCT buttons for five seconds enters UBOOT.</p><p>You can return to the official firmware using M-VAVE’s updater and your own original FM-1 package. The NSX39 firmware-update SysEx commands are ignored; only the FM-1 updater can write flash.</p></details>
 </section>
-<footer><p>All 128 pronunciations and 449 recorded units. Sustained cycles are lossless; transitions use block ADPCM. GM tones and original hardware effects are unavailable in this dump.</p><p>GPL-3.0-only · <a href="source.tar.gz">Corresponding source archive</a> · <a href="https://github.com/AL-255/nsx39-fm1-firmware">Source & build instructions</a> · <a href="https://github.com/AL-255/NSX39-Disasm">NSX39 research</a> · <a href="https://github.com/hugelton/Felucca">Felucca hardware & updater</a> · <a href="https://joakimeriksson.github.io/fm1-emu/">FM-1 emulator</a></p><p class="small">No affiliation with Yamaha, Gakken or M-VAVE. No NSX39 binaries or recordings are hosted here. <a href="licenses/GPL-3.0.txt">GPL</a> · <a href="licenses/Apache-2.0.txt">JieLi SDK license</a> · <a href="licenses/DejaVu-LICENSE.txt">Font license</a></p></footer>
+<footer><p>All 128 pronunciations and 449 recorded units. Sustained cycles are lossless; transitions use block ADPCM. GM tones and original hardware effects are unavailable in this dump.</p><p>GPL-3.0-only · <a href="source.tar.gz">Corresponding source archive</a> · <a href="https://github.com/AL-255/nsx39-fm1-firmware">Source & build instructions</a> · <a href="https://github.com/AL-255/NSX39-Disasm">NSX39 research</a> · <a href="https://github.com/hugelton/Felucca">Felucca hardware & updater</a> · <a href="https://joakimeriksson.github.io/fm1-emu/">FM-1 emulator</a></p><p class="small">No affiliation with Yamaha, Gakken or M-VAVE. No NSX39 binaries or recordings are hosted here. <a href="licenses/GPL-3.0.txt">GPL</a> · <a href="licenses/Apache-2.0.txt">JieLi SDK license</a> · <a href="licenses/DejaVu-LICENSE.txt">Small font</a> · <a href="licenses/Noto-CJK-LICENSE.txt">Noto CJK font</a></p></footer>
 </main><script type="module" src="app.js"></script></body></html>

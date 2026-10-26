@@ -1,8 +1,9 @@
 # Firmware-update safety
 
 Hardware installation is currently disabled after a physical boot failure in
-`FM-1_939`. Candidate `FM-1_940` fixes a reproduced retained-SRAM boot-marker bug;
-physical recovery and validation are pending. Emulator success is not a hardware safety certification.
+`FM-1_939`. Candidate `FM-1_941` includes the retained-SRAM boot-marker fix and new lyric UI.
+RAM-only recovery succeeded, returning the unit to its existing `FM-1_939`.
+Physical cold-boot validation of the new candidate is pending. Emulator success is not a hardware safety certification.
 
 The unchanged Felucca loader is pinned at commit
 `440e62ce8a33d9bb285ab6bbca9a0fd50e459648`. Its portable core and regression tests
@@ -49,8 +50,8 @@ If the device does not enumerate, use the documented
 [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter) recovery path;
 additional hardware may be needed. Do not assume every failure is USB-recoverable.
 
-No physical device was flashed during development. Hardware installation is a
-separate, explicit user action. This does not replace the device's mask-ROM/SPL.
+The first user-installed candidate failed to boot and was recovered without a
+flash write. Installation of a replacement is a separate, explicit user action. This does not replace the device's mask-ROM/SPL.
 
 ## RAM-only recovery for the diagnosed FM-1_939 marker failure
 
@@ -71,4 +72,17 @@ This is a temporary recovery step, not installation of the fixed image. A failed
 preflight/readback stops before execution. If the device stays black, do not
 repeat blindly or erase flash. Keep the physical diagnostic and use its result
 to choose the next step. Root device access may require sudo; do not send a
-password in chat. Physical execution of this recovery is pending.
+password in chat. The user successfully ran this recovery; the existing
+`FM-1_939` subsequently answered the FM-1 identity query.
+
+
+## Controlled candidate preflight
+
+`tools/install_candidate.py` validates a locally generated candidate's SHA-256,
+checks its product is `FM-1_941`, and queries the connected FM-1 identity. It uses
+the vendored GPL Felucca installer with stricter request/completion gates and the
+existing Python RtMidi backend. The default sends no update command. The current
+identity must equal `--expected-current` (default `FM-1_939`). `--apply` starts the
+actual two-stage flash update and must be an explicit hardware-test decision.
+The NSX39 MIDI device is not an install target. Public installation stays disabled
+until the fixed candidate has been validated on hardware.

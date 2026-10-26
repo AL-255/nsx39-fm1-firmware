@@ -18,3 +18,18 @@ The loader preserves the device's existing flash head, including its SPL and ide
 NSX39 data format and DSP research: [AL-255/NSX39-Disasm](https://github.com/AL-255/NSX39-Disasm).
 No dump, audio payloads, transformed Yamaha program, or extracted tables from that
 repository are vendored. The extractor reads these from the user's local file.
+
+
+Display fonts: DejaVu Sans Mono for small debug rows (`DejaVu-LICENSE.txt`),
+and Noto Sans CJK JP Bold for readable 40-pixel hiragana/katakana/romaji
+(`Noto-CJK-LICENSE.txt`, SIL Open Font License 1.1). `tools/gen_label_font.py`
+rasterizes a Unicode subset from the build host's font; the original font file
+is not vendored. UI syllable readings in `web/syllables.json` are annotations;
+no original voice or lyric sequence is stored there. Original lyric banks are
+extracted only from the user's dump.
+
+The controlled local installer and its simulated-device tests originate from
+Felucca's `tools/fm1_install.py` and `tests/install_test.py` at the pinned commit
+above. The local parser checks complete identity/request headers and identity checksums.
+The tests omit the unrelated sample-upload CLI, produce complete wire headers,
+and use this project's package/parser paths for cross-language comparison.

@@ -150,8 +150,13 @@ void nsx_render(int16_t *out,unsigned count){
  }
 }
 int nsx_init(const uint8_t *bank,size_t size){
- bank_ok=0;if(!bank||size<64||bank[0]!='N'||bank[1]!='S'||bank[2]!='X'||bank[3]!='V'||r32(bank+4)!=1)return 0;
+ bank_ok=0;if(!bank||size<64||bank[0]!='N'||bank[1]!='S'||bank[2]!='X'||bank[3]!='V'||r32(bank+4)!=2)return 0;
  vb=bank;vb_size=r32(vb+8);if(vb_size>size||vb_size>NSX_BANK_CAPACITY||vb_size<64||r32(vb+16)!=449||r32(vb+20)>64||!r32(vb+20)||r32(vb+36)!=22050||r32(vb+40)!=128||r32(vb+44)!=68||bank_crc(vb,vb_size)!=r32(vb+12))return 0;
+ // v2 carries the user's original 16 x 64-byte factory lyric table.
+ if(r32(vb+48)||r32(vb+52)){
+  if(r32(vb+52)!=1024||r32(vb+48)<64||!bound(r32(vb+48),1024))return 0;
+  for(unsigned b=0;b<16;b++){const uint8_t*p=vb+r32(vb+48)+64*b;unsigned n=0;while(n<64&&p[n]<128)n++;if(!n||n==64)return 0;for(;n<64;n++)if(p[n]!=0x80)return 0;}
+ }
  unit_count=449;name_count=(uint16_t)r32(vb+20);if(!bound(64,449*40)||!bound(r32(vb+24),name_count*8)||!bound(r32(vb+28),512)||!bound(r32(vb+32),32))return 0;
  for(unsigned i=0;i<name_count;i++)if(name(i)[7]!=0)return 0;
  for(unsigned i=0;i<128;i++){uint32_t p=r32(vb+r32(vb+28)+i*4);if(!bound(p,1))return 0;unsigned n=0;while(bound(p+n,1)&&vb[p+n]&&n<63)n++;if(!bound(p+n,1)||n>=63)return 0;}
@@ -162,3 +167,5 @@ int nsx_init(const uint8_t *bank,size_t size){
  for(unsigned i=0;i<36;i++){for(unsigned k=0;k<r32(unit(i)+4);k++)steady[i][k]=(int16_t)r16(vb+r32(unit(i))+k*2);}
  cache_id[0]=cache_id[1]=-1;bank_ok=1;nsx_reset();return 1;
 }
+
+const uint8_t *nsx_factory_lyrics(void){return bank_ok&&r32(vb+52)==1024?vb+r32(vb+48):0;}

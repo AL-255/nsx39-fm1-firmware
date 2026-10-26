@@ -10,7 +10,9 @@ This first delivery is a **debug build**, not a completed NSX39 replica.
 | Complete vocal bank | All 449 units extracted; 36 cycles lossless, 413 transitions lossy ADPCM |
 | Complete pronunciation table | All 128 original strings extracted from six packets |
 | Keyboard and pitch | 27 FM-1 keys, three original MIDI ranges, monophonic |
-| Syllable selector | SELECT chooses a fixed syllable; repeated keys repeat it |
+| Syllable selector | Lyric 0: SELECT chooses a fixed syllable; repeated keys repeat it |
+| Factory lyrics | ALGORITHM selects banks 1–15 from the dump; keys step, loop and pitch; SELECT left rewinds, right reserved |
+| Readable display | PRESETS selects hiragana/katakana/romaji; large last played and smaller upcoming label |
 | Vocal DSP | New integer pitch-synchronous grain renderer; finite transitions and three steady variants |
 | Source pitch metadata | Used to select pitch-mark neighborhoods |
 | Stretch streams / modulation templates | Extracted and stored; original algorithms not yet implemented |
@@ -18,7 +20,7 @@ This first delivery is a **debug build**, not a completed NSX39 replica.
 | Pitch bend, bend-range RPN, fine tuning | Implemented; original integer log/exponent rounding not matched |
 | Sustain, note-off, panic | Implemented |
 | NRPN controls | Basic approximate vibrato, automatic pitch/dynamics, timing, noise, connection and seek dispatch; not faithful original policies |
-| Lyric SysEx | Parses phonetic replace/append messages; sequence API exists, but debug front panel defaults to fixed syllables |
+| Lyric SysEx | Parses phonetic replace/append messages; panel lyric banks index the original 128-entry pronunciation table; custom SysEx sequences do not have kana/romaji annotations |
 | Solfege | Experimental API only; no debug-panel exposure or compatibility claim |
 | Generalplus command sequencer | Not implemented |
 | 128 persistent command/lyric slots | Not implemented; no musical flash writes |

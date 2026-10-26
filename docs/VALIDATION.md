@@ -87,6 +87,44 @@ and audio output (10 frames / 189 audio halves over an 800 ms local run).
 and a small, explicit initial-SRAM fixture. It checks zero, `0xa5` and `0xff`
 startup RAM and confirms a separate untouched word retains each fill pattern.
 The test uses only the empty public template, without proprietary voice data.
-Hardware installation stays blocked while physical recovery and validation are
-pending. `tools/read_uboot_diagnostics.py` performs only INQUIRY and two fixed
+RAM-only physical recovery subsequently succeeded and the installed `FM-1_939`
+answered an identity query. Hardware installation stays blocked pending a
+physical cold-boot check of the new candidate. `tools/read_uboot_diagnostics.py` performs only INQUIRY and two fixed
 SRAM reads, and may need sudo for `/dev/sg0`; it has no write/erase/execute commands.
+
+
+## Readable syllables and original lyrics (`FM-1_941`)
+
+The native app and AudioWorklet share `performance.c`. Public synthetic-bank
+checks cover manual retention, all selector directions, stepping and wrap,
+rewind without a trigger, last/next reporting, positive-velocity channel-1 input,
+zero-velocity note-on, panic and held-key revoice without a lyric advance.
+Malformed offsets, table size, missing/endless return markers and unsupported
+jump commands fail startup validation even when the bank CRC has been recomputed.
+
+The private dump integration test verifies that the packed 1,024-byte table is
+identical to the factory defaults at `0x1de40`, then plays all 15 banks for two
+loops through the actual WebAssembly controller. No table contents are in public
+fixtures. The bank is now 483,052 bytes; the app is about 556 KB of the 581,564-byte
+slot, with 47,320 bytes of normal RAM and 117,888 bytes of pool buffers.
+
+A 1,650 ms run of the actual generated `.fwsc` used these panel inputs:
+
+```sh
+/path/to/fm1-emu --fwsc local/voice.fwsc --ms 1650 \
+  --keys '300:enc1:+6,400-550:n0,650:enc6:+1,750-900:n4,1000:enc6:+1,1100-1250:n7,1350:enc0:-1' \
+  --snap 500,850,1200,1500 --wav local/lyrics-debug.wav
+```
+
+All four LCD captures were visually inspected: readable hiragana, katakana and
+romaji; large last-played versus smaller upcoming syllables; and rewind resetting
+the next position while retaining the last played label. The run produced 21 LCD
+frames, 482 audio halves and zero late buffers, with a maximum observed render
+time of 441 microseconds. This simulator timing is not a measured hardware limit.
+The empty new template also passed all three retained-SRAM startup cases (8 LCD
+frames / 140 audio halves over 550 ms each).
+
+The controlled local candidate installer is exercised without device access by
+`tests/install_candidate_test.py` and the vendored simulated-device suite. It
+checks package SHA/product, identity framing/checksum, read bounds, phase-specific
+completion and failed sends. Default candidate preflight does not start an update.

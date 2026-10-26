@@ -1,15 +1,16 @@
 # NSX39 vocal debug firmware for M-VAVE FM-1
 
 A GPL-3.0-only native vocal firmware and **browser-local firmware generator**.
-The first build is a debug instrument: **SELECT chooses a syllable;
-the 27 keys trigger it at different pitches; the display shows what is sounding
-and its waveform.**
+The debug instrument plays individual syllables or the original lyric banks.
+**ALGORITHM chooses a lyric; the keys trigger and pitch its syllables; the display
+shows the last played syllable, the next one, and the output waveform.**
 
 Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 
 **Hardware installation disabled:** the first physical test of build `FM-1_939`
 returned to UBOOT with a black screen. A retained-SRAM startup bug was reproduced
-and corrected in candidate `FM-1_940`; physical recovery/validation is pending.
+and corrected in candidate `FM-1_941`. RAM-only recovery succeeded; the installed
+unit still runs `FM-1_939`. The new candidate awaits physical cold-boot validation.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
 port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
 persistence compatibility remains unfinished. Do not mistake bank coverage for
@@ -21,9 +22,8 @@ complete behavioral equivalence. See [compatibility](docs/COMPATIBILITY.md).
 2. Generate, then listen using the same native engine compiled to WebAssembly.
 3. Download the generated `.fwsc` to open in the
    [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu/) or test on hardware.
-4. For hardware, review the recovery instructions, explicitly acknowledge the
-   experimental build, and use **Connect and install** in a SysEx Web MIDI browser
-   (Chrome/Edge). No physical device is flashed automatically by this repository.
+4. Hardware installation remains disabled pending validation of the fixed build.
+   No physical device is flashed automatically by this repository.
 
 Supported input is the analyzed 2,097,152-byte flash image, optionally followed
 by the 272-byte programmer trailer. Flash SHA-256:
@@ -35,39 +35,51 @@ On the FM-1:
 
 | Control | Debug behavior |
 |---|---|
-| SELECT encoder | Select pronunciation 0–127, wrapping |
-| 27 keys | Monophonic trigger and pitch, repeat the selected syllable |
+| ALGORITHM encoder | Lyric 0: manual; lyrics 1–15: original firmware banks |
+| SELECT encoder | Manual: pronunciation 0–127, wrapping. Lyric: left restarts, right reserved |
+| PRESETS encoder | Cycle hiragana, katakana and romaji labels |
+| 27 keys | Monophonic trigger/pitch; each new key press advances one lyric syllable |
 | OCT− / OCT+ | Three registers: MIDI 53–79, 65–91 (default), 77–103 |
 | MASTER | Output level |
 | SAVE | Panic / all sound off (does not save to flash) |
 | Both OCT buttons, held 5 s | Enter UBOOT for recovery |
 | USB MIDI and TRS MIDI | Vocal channel 1 note/velocity/CC/bend |
 
-The screen distinguishes **SELECTED** (the encoder's next choice) from **SOUNDED**
-(the last triggered syllable). It also shows MIDI note/velocity, source unit and
-phonemes, onset/loop state, a 10.9 ms output-waveform window, render microseconds,
-maximum render time, and late-buffer count. It retains the last waveform after
-release. Other panel controls are intentionally unused in this debug build.
+The largest label retains the **last played** syllable, even after key release,
+rewind, or a selection change. The **next** syllable appears below in smaller type.
+PRESETS changes both labels using a 40-pixel antialiased Noto Sans CJK JP font
+(20 pixels for the upcoming syllable). Debug rows show MIDI note/velocity, source
+unit and phonemes, onset/loop state, a 10.9 ms waveform window, render time,
+maximum render time, and late-buffer count. The last waveform remains after release.
+
+Each factory bank loops at its original return marker. Banks 1–5 are single-vowel
+loops; banks 6–10 are factory phrases, and 11–15 preserve the original duplicate
+user slots. Selecting a bank or turning SELECT left resets its next syllable;
+neither triggers sound or changes the last played label. Returning to manual mode
+restores its previous SELECT choice. Releasing a key while another remains held
+changes pitch without advancing the lyric. USB/TRS channel-1 note-on also advances;
+note-off and zero-velocity note-on do not. Settings stay in RAM.
 
 ## No proprietary data in this repository or its Pages deployment
 
 The generator validates the dump, XOR-decodes its NSXP body, parses the serialized
-vocal database and pronunciation packets, decodes PCM/Yamaha ADPCM, then creates
+vocal database, pronunciation packets and factory lyric defaults, decodes PCM/Yamaha ADPCM, then creates
 an FM-1 voice bank. All of that runs in a browser worker. No original executable
 code is copied into the result: the synthesis engine is this project's C code.
 
 The bank contains all **449 units / 744,945 decoded samples**, paired source pitch
-and stretch streams, four modulation curves, and all **128 pronunciation strings**.
+and stretch streams, four modulation curves, and all **128 pronunciation strings**,
+and the 1,024-byte original factory lyric table.
 The 36 tiny sustained cycles stay **lossless PCM16**; 413 transitions use standard
 IMA ADPCM in independently seeded **128-sample blocks**, 68 bytes each. This is
-lossy for transitions. The tested bank occupies **482,028 bytes** of a 491,520-byte
+lossy for transitions. The tested bank occupies **483,052 bytes** of a 491,520-byte
 reserve. Aggregate codec SNR against exact decoded input is **24.61 dB**; that
 measures the codec, not fidelity to the complete original synthesizer.
 
 The native renderer decodes a transition when it is selected into one of two
 bounded 8,192-sample buffers. No heap or unbounded decoding runs in the audio path.
-The firmware uses about **44 KB normal RAM**, **118 KB buffer pool**, and a
-**515 KB app image**, inside the fixed 581,564-byte app slot. Audio renders at
+The firmware uses about **47 KB normal RAM**, **118 KB buffer pool**, and a
+**556 KB app image**, inside the fixed 581,564-byte app slot. Audio renders at
 22,050 Hz and is interpolated to the FM-1's approximately 44.1 kHz output.
 
 Published artifacts contain only our compiled code, an **empty voice reserve**,
@@ -81,7 +93,7 @@ material; GPL licensing of this code does not relicense Yamaha/Gakken data.
 ## Build locally
 
 Linux x86-64, Python 3 with Pillow, Node.js 20+, a C compiler, Clang/wasm-ld and
-DejaVu Sans Mono are required. The hardware compiler is JieLi's pi32v2 compiler.
+DejaVu Sans Mono and Noto Sans CJK JP Bold are required. The hardware compiler is JieLi's pi32v2 compiler.
 No system-wide installation is required for it. Download instructions are in
 [BUILDING.md](docs/BUILDING.md).
 
@@ -113,7 +125,8 @@ can write only the five OTA staging sectors. No NSX39 command can write flash.
 A failed or interrupted transfer must be resumed with the **same generated
 package**. Read [update safety](docs/UPDATES.md) before hardware tests.
 
-Tests cover cross-language codec agreement, malformed input and completion gates,
+Tests cover lyric stepping/looping/rewind, reserved SELECT direction, MIDI channel
+isolation, preview state, cross-language codec agreement, malformed input and completion gates,
 all 128 pronunciations, C sanitizers, package round trips, and exact native/WASM
 output agreement at MIDI 53, 65, 69, 77, 91 and 103. Upstream updater tests cover
 wrong-board images, corruption, changed transfer sectors, chip-key mismatch,
