@@ -1,0 +1,68 @@
+name: Build, check and deploy Pages
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Host build prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 lld-18 fonts-dejavu-core
+          python -m pip install Pillow==11.3.0
+      - name: Cache pinned cross compiler and SDK
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: jieli-20260730-1-ac79-d179b448-v1
+      - name: Download pinned cross compiler and SDK
+        run: sh tools/bootstrap.sh
+      - name: Build empty firmware template and preview engine
+        env:
+          JIELI_TOOLCHAIN: ${{ github.workspace }}/.cache/toolchain
+          AC79_SDK: ${{ github.workspace }}/.cache/ac79-sdk
+          NSX39_CLANG: /usr/bin/clang-18
+          NSX39_WASM_LD: /usr/bin/wasm-ld-18
+        run: |
+          python tools/build.py
+          python tools/build_web.py
+      - name: Test code, blank template and synthetic voice data
+        env:
+          AC79_SDK: ${{ github.workspace }}/.cache/ac79-sdk
+        run: |
+          npm test
+          python tools/test_updater.py
+      - name: Prepare allowlisted public artifact
+        run: python tools/prepare_pages.py
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
