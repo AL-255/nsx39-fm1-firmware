@@ -115,23 +115,42 @@ export class Updater {
   constructor(access, log) {
     this.access = access;
     this.log = log || (() => {});
+    this.discovery = [];
   }
 
   // every in/out pair with the same port name that answers the handshake
   async find(filter) {
+    this.discovery = [];
     const outs = [...this.access.outputs.values()];
     for (const input of this.access.inputs.values()) {
       if (input.state === "disconnected") continue;
       if (!/fm-1|felucca|ota|composite|sinco|usb-midi/i.test(input.name || "")) continue;   // never probe other gear
       const output = outs.find((o) => o.name === input.name && o.state !== "disconnected");
       if (!output) continue;
-      try { await input.open(); await output.open(); } catch (_) { continue; }
+      try { await input.open(); await output.open(); } catch (error) {
+        this.discovery.push(`${input.name}: cannot open MIDI ports (${error.message})`);
+        continue;
+      }
       const link = new Link(input, output);
-      const id = await handshake(link, 2);
+      // Match the native installer's settling time. Chrome may report an open
+      // port before its MIDI backend is ready to carry the first SysEx packet.
+      await sleep(300);
+      const id = await handshake(link);
+      this.discovery.push(`${input.name}: ${id ? id.text : "no valid identity reply"}`);
       if (id && (!filter || filter(id))) return { link, id, name: input.name };
       link.close();
     }
     return null;
+  }
+
+  async connect(filter) {
+    let dev = await this.find(filter);
+    if (!dev) {
+      // Only repeat discovery. Never automatically repeat UPGRADE or a write.
+      await sleep(500);
+      dev = await this.find(filter);
+    }
+    return dev;
   }
 
   async waitFor(filter, ms) {
@@ -178,8 +197,13 @@ export class Updater {
   // full install: running firmware -> loader -> new firmware
   async install(image, product, onStep) {
     const step = onStep || (() => {});
-    const dev = await this.find((id) => !IS_OTA(id));
-    if (!dev) throw fail("notfound", "FM-1 not found (USB cable, and no other app using it?)");
+    const dev = await this.connect((id) => !IS_OTA(id));
+    if (!dev) {
+      const detail = this.discovery.join("; ");
+      throw fail("notfound", detail
+        ? `Cannot connect to the FM-1. ${detail}. Close other MIDI/installer tabs, reconnect USB, then try again.`
+        : "No connected FM-1 MIDI port was found. Check the USB data cable and browser MIDI permission, then try again.");
+    }
     const [model] = product.split("_");
     if (dev.id.model !== model) { dev.link.close(); throw fail("model", `the device is ${dev.id.text}, the package is for ${product}`); }
     step("start", dev.id.text, { port: dev.name });
@@ -200,7 +224,7 @@ export class Updater {
     if (!back) throw fail("noreturn", "the device did not come back: power-cycle it");
     back.link.close();
     if (back.id.text !== product) throw fail("mismatch", `installed, but the device reports ${back.id.text}`, back.id.text);
-    step("done", back.id.text);
+    step("done", back.id.text, { port: back.name });
     return back.id.text;
   }
 
@@ -217,12 +241,12 @@ export class Updater {
   // resume: the device is already in update mode (loader) -> true when the write finished
   async resume(image, onStep, product = null) {
     const model = product && product.split("_")[0];
-    const ota = await this.find((id) => model ? id.model === "ota-" + model : IS_OTA(id));
+    const ota = await this.connect((id) => model ? id.model === "ota-" + model : IS_OTA(id));
     if (!ota) return false;
     const step = onStep || (() => {});
     step("resume", ota.id.text, { port: ota.name });
     const result = await this.write(ota, image, step);
-    if (!result.finished) return false;
+    if (!result.finished) throw fail(result.lost ? "lost" : "stopped", `The update loader ${result.lost ? "was disconnected" : "stopped answering"} after ${result.served} requests. Reconnect USB and install the same package to resume.`);
     if (product) {
       step("reboot");
       await sleep(3000);
@@ -230,7 +254,7 @@ export class Updater {
       if (!back) throw fail("noreturn", "The FM-1 did not return after resuming the write.");
       back.link.close();
       if (back.id.text !== product) throw fail("mismatch", "The FM-1 reports a different firmware after resuming.", back.id.text);
-      step("done", back.id.text);
+      step("done", back.id.text, { port: back.name });
     }
     return true;
   }

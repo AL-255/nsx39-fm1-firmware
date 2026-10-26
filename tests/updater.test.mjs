@@ -3,6 +3,28 @@ import test from 'node:test';import assert from 'node:assert/strict';
 import {Updater,pack7,unpack7} from '../web/lib/fm1ota.js';
 function request(addr,len=8){const b=[0,0x59,0x30,8,0,0,0,addr&255,(addr>>>8)&255,(addr>>>16)&255,(addr>>>24)&255,len&255,(len>>>8)&255,0];b.push(~b.slice(6).reduce((a,b)=>a+b,0)&255);return [0xf0,...pack7(b),0xf7];}
 function link(packets,send=true){return {lost:false,sent:[],read:async()=>packets.shift(),send(p){this.sent.push(p);return send;}};}
+function identity(text){const b=[0,0x59,0x11,27,0,0,...new TextEncoder().encode(text)];while(b.length<33)b.push(0);b.push(~b.slice(6).reduce((a,b)=>a+b,0)&255);return [0xf0,...pack7(b),0xf7];}
+test('discovery lets a newly opened MIDI transport settle before its first identity query',async()=>{
+ let ready=false,queries=0;const input={name:'Felucca MIDI 1',state:'connected',async open(){}};
+ const output={name:input.name,state:'connected',async open(){setTimeout(()=>ready=true,150);},send(){queries++;if(ready)queueMicrotask(()=>input.onmidimessage?.({data:identity('FM-1_942')}));}};
+ const u=new Updater({inputs:new Map([[1,input]]),outputs:new Map([[1,output]])});const dev=await u.find();
+ assert.equal(dev.id.text,'FM-1_942');assert.equal(queries,1);dev.link.close();
+});
+test('connection repeats only discovery when the first scan misses the FM-1',async()=>{
+ const u=new Updater({});let calls=0;const dev={id:{text:'FM-1_942'}};u.find=async()=>++calls===1?null:dev;
+ assert.equal(await u.connect(),dev);assert.equal(calls,2);
+});
+test('connection errors identify a visible MIDI port that cannot be opened',async()=>{
+ const input={name:'Felucca MIDI 1',state:'connected',async open(){throw Error('port unavailable');}},output={name:input.name,state:'connected'};
+ const u=new Updater({inputs:new Map([[1,input]]),outputs:new Map([[1,output]])});
+ await assert.rejects(u.install(new Uint8Array(16),'FM-1_942'),e=>e.code==='notfound'&&/Felucca MIDI 1.*port unavailable/.test(e.message));
+});
+test('a failed loader resume throws instead of falling through to a fresh installation',async()=>{
+ for(const lost of [false,true]){
+  const u=new Updater({});u.connect=async()=>({id:{text:'ota-FM-1_900',model:'ota-FM-1'}});u.write=async()=>({served:7,finished:false,lost});
+  await assert.rejects(u.resume(new Uint8Array(16),()=>{},'FM-1_942'),e=>e.code===(lost?'lost':'stopped')&&/after 7 requests/.test(e.message));
+ }
+});
 test('pack7 round trip every byte',()=>{const b=Array.from({length:256},(_,i)=>i);assert.deepEqual(unpack7(pack7(b)),b);});
 test('serve refuses empty, oversized and out-of-image reads',async()=>{for(const [a,n]of[[0,0],[0,513],[100,20]]){const l=link([request(a,n)]);await assert.rejects(new Updater({}).serve(l,new Uint8Array(110),0xf0000000,1),/bad request/);assert.equal(l.sent.length,0);}});
 test('phase-specific completion gate requires a prior read',async()=>{

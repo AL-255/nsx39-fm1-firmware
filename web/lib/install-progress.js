@@ -44,7 +44,7 @@ export class InstallProgress {
    }
   }
   this.phase=phase;
-  if(phase==='done'){this.device=info;this.lastResponse=this.now();this.ended=this.now();}
+  if(phase==='done'){this.device=info;this.port=detail.port||this.port;this.lastResponse=this.now();this.ended=this.now();}
  }
  stop(message){this.failure=message;this.ended=this.now();}
  snapshot(){

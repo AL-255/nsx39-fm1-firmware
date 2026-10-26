@@ -3,7 +3,10 @@
 Hardware installation is enabled for candidate `FM-1_942`, which retains the
 retained-SRAM boot-marker fix and adds articulation controls and ADSR. The earlier `FM-1_939` failed to boot.
 RAM-only recovery succeeded, returning the unit to its existing `FM-1_939`; the user later reported a working
-`FM-1_941` installation. Physical validation of `FM-1_942` is pending. Emulator success is not a hardware safety certification.
+`FM-1_941` installation. On 2026-10-26, the agent installed `FM-1_942` on the
+connected hardware at the user's request, then completed the same installation
+through the live Pages generator in Chrome. Both restarted and returned the
+expected identity. Physical sound/display and cold-boot checks remain pending.
 
 The unchanged Felucca loader is pinned at commit
 `440e62ce8a33d9bb285ab6bbca9a0fd50e459648`. Its portable core and regression tests
@@ -55,6 +58,13 @@ of individual flash writes. The bar stays below 100% until the device reconnects
 with the expected identity. USB reconnection waits are indeterminate, with elapsed
 time and last-response age visible. Failures preserve the last progress and the
 recovery message. Loader behavior, timeouts and flash boundaries are unchanged.
+
+Browser discovery now waits 300 ms after opening a MIDI pair, matching the
+native installer, and retries identity discovery once before failing. It reports
+whether an FM-1 port was absent, could not be opened, or did not answer. These
+retries send identity queries only; they do not repeat the upgrade command or
+flash writes. A failed loader resume raises its original error instead of
+falling through to an unrelated new-install attempt.
 
 If the device does not enumerate, use the documented
 [FM-1-transporter](https://github.com/kurogedelic/FM-1-transporter) recovery path;

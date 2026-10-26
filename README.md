@@ -10,7 +10,9 @@ Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 **Experimental hardware installation:** the retained-SRAM startup bug in
 `FM-1_939` was fixed in `FM-1_941`; the user subsequently reported a working
 installation. Current `FM-1_942` adds articulation controls and ADSR. It retains
-the startup fix; this new build has not been physically validated.
+the startup fix. Installation and automatic restart were verified on a physical
+FM-1 using both native USB-MIDI and the live Pages generator on 2026-10-26.
+Physical sound/display checks and cold-boot validation remain pending.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
 port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
 persistence compatibility remains unfinished. Do not mistake bank coverage for

@@ -36,12 +36,10 @@ changed-in-flight sector retries, corrupt image refusal, wrong-key refusal, and
 preservation of unrelated user data. The browser protocol tests completion gates,
 request bounds, send failure and packing.
 
-No connected browser was available in the computer-use inventory, so a real
-browser UI/audio/Web MIDI test is pending. WebAssembly is instantiated and checked
-through Node, and all site assets are served from a local HTTP preview. Physical
-FM-1 sound, printed-control mapping across hardware revisions, USB enumeration,
-update/recovery and power-interruption testing are pending. No physical FM-1 was
-flashed.
+At this initial validation, no connected browser was available, and no physical
+FM-1 had been flashed. Later physical update and Chrome tests are recorded below.
+Physical FM-1 sound, printed-control mapping across hardware revisions and
+power-interruption testing remain pending.
 
 ## Reproduce
 
@@ -165,3 +163,36 @@ ADSR is an added FM-1 envelope. See ARTICULATION.md for the explicit remaining
 differences in automatic pitch/dynamics and scheduling. Firmware-update and
 startup marker code are unchanged; the standard updater/recovery and dirty-SRAM
 boot regressions are required for this new application image.
+
+## Physical installation and live Pages test (2026-10-26)
+
+The user explicitly requested an installation attempt on the connected FM-1.
+The device answered `FM-1_941` on its Felucca USB-MIDI port. The adjacent NSX39
+MIDI device was excluded from update discovery and was not an install target.
+
+The candidate was checked before installation:
+
+- Product: `FM-1_942`.
+- Package SHA-256: `7db10c2448c15d631887a04f01f05b31afbff55045a3ab2c188fe610e647c03b`.
+- Package size: 610,090 bytes; logical update image: 610,070 bytes.
+
+The native RtMidi installer completed staging, loader verification and application
+transfer, then observed `FM-1_942` after automatic restart at 57.8 seconds.
+
+Chrome 155.0.8059.84 in a separate headless test profile then loaded the actual
+HTTPS Pages generator, selected the local original dump, and generated the same
+package hash. The first browser connection failed at discovery with no package
+requests. A direct browser MIDI identity probe subsequently succeeded. Repeating
+the complete Pages flow then succeeded: the visible progress reached 100%,
+reported 2,341 data requests / 1,169.8 KiB, and ended with `Installed FM-1_942`
+after about 52 seconds. This second run installed the identical package, allowing
+the loader to skip application sectors already equal to their requested content.
+No reset/erase fallback, privileged recovery or power interruption was used.
+
+The exact cause of the initial browser discovery miss is not established. The
+follow-up hardening adds the native installer's 300 ms port-settling delay,
+three identity attempts and a fresh discovery pass, plus specific port errors.
+Public regressions cover a settling MIDI transport, repeated discovery, port-open
+failure and preserving failed-resume errors. The application and RAM loader
+binary are unchanged by this browser fix. Full physical audio/display and
+power-cycle checks are still separate from successful update/restart identity.
