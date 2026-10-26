@@ -88,8 +88,8 @@ and a small, explicit initial-SRAM fixture. It checks zero, `0xa5` and `0xff`
 startup RAM and confirms a separate untouched word retains each fill pattern.
 The test uses only the empty public template, without proprietary voice data.
 RAM-only physical recovery subsequently succeeded and the installed `FM-1_939`
-answered an identity query. Hardware installation stays blocked pending a
-physical cold-boot check of the new candidate. `tools/read_uboot_diagnostics.py` performs only INQUIRY and two fixed
+answered an identity query. Installation of the fixed candidate is now enabled;
+a physical cold-boot check is pending. `tools/read_uboot_diagnostics.py` performs only INQUIRY and two fixed
 SRAM reads, and may need sudo for `/dev/sg0`; it has no write/erase/execute commands.
 
 

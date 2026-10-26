@@ -1,7 +1,7 @@
 # Firmware-update safety
 
-Hardware installation is currently disabled after a physical boot failure in
-`FM-1_939`. Candidate `FM-1_941` includes the retained-SRAM boot-marker fix and new lyric UI.
+Hardware installation is enabled for candidate `FM-1_941`, which includes the
+retained-SRAM boot-marker fix and new lyric UI. The earlier `FM-1_939` failed to boot.
 RAM-only recovery succeeded, returning the unit to its existing `FM-1_939`.
 Physical cold-boot validation of the new candidate is pending. Emulator success is not a hardware safety certification.
 
@@ -84,5 +84,6 @@ the vendored GPL Felucca installer with stricter request/completion gates and th
 existing Python RtMidi backend. The default sends no update command. The current
 identity must equal `--expected-current` (default `FM-1_939`). `--apply` starts the
 actual two-stage flash update and must be an explicit hardware-test decision.
-The NSX39 MIDI device is not an install target. Public installation stays disabled
-until the fixed candidate has been validated on hardware.
+The NSX39 MIDI device is not an install target. The public page allows explicit
+installation of the fixed candidate after generation and acknowledgement;
+physical cold-boot validation remains pending.

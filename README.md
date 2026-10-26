@@ -7,10 +7,11 @@ shows the last played syllable, the next one, and the output waveform.**
 
 Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 
-**Hardware installation disabled:** the first physical test of build `FM-1_939`
+**Experimental hardware installation:** the first physical test of build `FM-1_939`
 returned to UBOOT with a black screen. A retained-SRAM startup bug was reproduced
 and corrected in candidate `FM-1_941`. RAM-only recovery succeeded; the installed
-unit still runs `FM-1_939`. The new candidate awaits physical cold-boot validation.
+unit still runs `FM-1_939`. Installation of the fixed build is enabled; physical
+cold-boot validation is still pending.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
 port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
 persistence compatibility remains unfinished. Do not mistake bank coverage for
@@ -22,8 +23,9 @@ complete behavioral equivalence. See [compatibility](docs/COMPATIBILITY.md).
 2. Generate, then listen using the same native engine compiled to WebAssembly.
 3. Download the generated `.fwsc` to open in the
    [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu/) or test on hardware.
-4. Hardware installation remains disabled pending validation of the fixed build.
-   No physical device is flashed automatically by this repository.
+4. For hardware, review the recovery instructions, check the acknowledgement box,
+   and click **Connect and install** in Chrome or Edge with SysEx MIDI access.
+   Installation begins only after this explicit action.
 
 Supported input is the analyzed 2,097,152-byte flash image, optionally followed
 by the 272-byte programmer trailer. Flash SHA-256:
