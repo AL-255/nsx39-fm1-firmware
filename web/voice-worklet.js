@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 class Voice extends AudioWorkletProcessor {
  constructor(){super();this.ready=false;this.index=128;this.phase=0;this.a=0;this.b=0;this.scope=new Float32Array(240);this.scopeIndex=0;this.ticks=0;this.port.onmessage=async({data:d})=>{
-  if(d.init){try{this.e=(await WebAssembly.instantiate(d.wasm,{})).instance.exports;new Uint8Array(this.e.memory.buffer,this.e.web_bank_ptr(),d.bank.length).set(d.bank);if(!this.e.web_init())throw Error('Voice bank rejected');this.buffer=new Int16Array(this.e.memory.buffer,this.e.web_audio_ptr(),128);this.ready=true;this.port.postMessage({ready:true});}catch(e){this.port.postMessage({error:e.message});}}
+  if(d.init){try{this.e=(await WebAssembly.instantiate(d.wasm,{})).instance.exports;if(typeof this.e.web_art_ptr!=='function'||typeof this.e.nsx_adsr!=='function')throw Error('Preview engine version mismatch. Reload this page.');new Uint8Array(this.e.memory.buffer,this.e.web_bank_ptr(),d.bank.length).set(d.bank);if(!this.e.web_init())throw Error('Voice bank rejected');this.buffer=new Int16Array(this.e.memory.buffer,this.e.web_audio_ptr(),128);this.ready=true;this.port.postMessage({ready:true});}catch(e){this.port.postMessage({error:e.message});}}
   if(!this.ready)return;
   let changed=false;
   if(d.select!==undefined){this.e.performance_manual(d.select);changed=true;}
