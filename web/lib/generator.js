@@ -2,7 +2,7 @@
 import {extractDump,packBank,sha256,CAPACITY} from './bank.js';
 import {Package,logicalImage} from './fm1pkg.js';
 export async function generate(dump,templateBytes,manifest,report=()=>{}) {
- if(manifest.format!==1||manifest.product!=='FM-1_939'||manifest.bankCapacity!==CAPACITY)throw Error('Unsupported firmware build manifest');
+ if(manifest.format!==1||manifest.product!=='FM-1_940'||manifest.bankCapacity!==CAPACITY)throw Error('Unsupported firmware build manifest');
  if(await sha256(templateBytes)!==manifest.templateSha256)throw Error('Firmware template hash mismatch. Reload the page.');
  report('Validating the NSX39 dump…');const database=await extractDump(dump);
  report('Compressing all 449 vocal units…');const bank=packBank(database);

@@ -7,7 +7,9 @@ and its waveform.**
 
 Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 
-**Experimental, emulator-tested, not yet tested on physical FM-1 hardware.**
+**Hardware installation disabled:** the first physical test of build `FM-1_939`
+returned to UBOOT with a black screen. A retained-SRAM startup bug was reproduced
+and corrected in candidate `FM-1_940`; physical recovery/validation is pending.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
 port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
 persistence compatibility remains unfinished. Do not mistake bank coverage for

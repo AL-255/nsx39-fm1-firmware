@@ -1,7 +1,8 @@
 # Firmware-update safety
 
-Physical hardware validation is pending. The page requires an explicit experimental
-acknowledgment. Emulator success is not a hardware safety certification.
+Hardware installation is currently disabled after a physical boot failure in
+`FM-1_939`. Candidate `FM-1_940` fixes a reproduced retained-SRAM boot-marker bug;
+physical recovery and validation are pending. Emulator success is not a hardware safety certification.
 
 The unchanged Felucca loader is pinned at commit
 `440e62ce8a33d9bb285ab6bbca9a0fd50e459648`. Its portable core and regression tests

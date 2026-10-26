@@ -29,7 +29,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .cache
-          key: jieli-20260730-1-ac79-d179b448-v1
+          key: jieli-20260730-1-ac79-d179b448-emu-eef6d957-v2
       - name: Download pinned cross compiler and SDK
         run: sh tools/bootstrap.sh
       - name: Build empty firmware template and preview engine
@@ -47,6 +47,8 @@ jobs:
         run: |
           npm test
           python tools/test_updater.py
+      - name: Boot real firmware with zero and dirty SRAM
+        run: python tools/test_boot.py
       - name: Prepare allowlisted public artifact
         run: python tools/prepare_pages.py
       - uses: actions/upload-pages-artifact@v3

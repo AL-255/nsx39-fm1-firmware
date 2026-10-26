@@ -4,7 +4,7 @@
 #define FELUCCA_OTA 1
 #define FELUCCA_CDC 0
 #define FELUCCA_UAC 0
-#define FELUCCA_ID "FM-1_939"
+#define FELUCCA_ID "FM-1_940"
 // Miku cyan #39C5BB, quantized to the LCD's RGB565 format.
 #define UI_ACCENT 0x3e37u
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
@@ -115,7 +115,10 @@ static void panel_controls(void){
 
 }
 extern uint32_t _data_start[],_data_end[],_data_load[],_bss_start[],_bss_end[],_pool_start[],_pool_end[],_rt_start[],_rt_end[],_rt_load[];
-static uint32_t boot_attempts __attribute__((section(".noinit"))),boot_magic __attribute__((section(".noinit")));
+// Retained SRAM is outside the C zero-initialization contract. Volatile forces
+// a real 32-bit read/compare: the pi32v2 compiler otherwise folds static
+// boot_magic into a one-byte Boolean and trusts arbitrary retained RAM.
+static volatile uint32_t boot_attempts __attribute__((section(".noinit"))),boot_magic __attribute__((section(".noinit")));
 void fm1_cstart(void){
  fm1_cpu1_halt();fm1_time_init();fm1_reset_reason();fm1_wdt_arm(0xd);
  if(boot_magic!=0x4e535842){boot_magic=0x4e535842;boot_attempts=0;}if(++boot_attempts>2){boot_attempts=0;fm1_enter_uboot();}

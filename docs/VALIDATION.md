@@ -62,3 +62,31 @@ build/ldr_test build/template.fwsc local/voice.fwsc
 
 Create `work/` before `--snap`; that emulator writes screenshots there. Do not use
 `--quiet` when requesting WAV output in this pinned emulator version.
+
+## Physical boot failure and dirty-SRAM regression (2026-10-26)
+
+The first user hardware install of `FM-1_939` resulted in a black screen and USB
+`4c4a:8057 / WL80UBOOT1.00`. Public hardware installation was disabled immediately
+after investigation began. The application and filesystem CRCs in the generated
+file passed an independent check; installed flash has not yet been read back.
+
+The `static` `.noinit` boot marker was incorrectly optimized by pi32v2 Clang:
+instead of comparing the stored 32-bit magic `0x4e535842`, the emitted code read
+one byte, treated any nonzero value as initialized, and trusted the adjacent
+retained attempt counter. Dirty SRAM could therefore enter UBOOT immediately.
+This is a confirmed code defect; retained physical RAM is still needed to prove
+it was the sole cause of this unit's failure.
+
+The old package was then booted in the pinned emulator with initial SRAM `0xa5`:
+it reached the UBOOT-entry path, reset the attempt counter, and produced zero LCD
+frames and zero audio halves. The volatile-marker fix emits a real 32-bit magic
+comparison. With the same dirty-RAM fixture, candidate `FM-1_940` reached the LCD
+and audio output (10 frames / 189 audio halves over an 800 ms local run).
+
+`tools/test_boot.py` makes this regression part of CI using a pinned MIT emulator
+and a small, explicit initial-SRAM fixture. It checks zero, `0xa5` and `0xff`
+startup RAM and confirms a separate untouched word retains each fill pattern.
+The test uses only the empty public template, without proprietary voice data.
+Hardware installation stays blocked while physical recovery and validation are
+pending. `tools/read_uboot_diagnostics.py` performs only INQUIRY and two fixed
+SRAM reads, and may need sudo for `/dev/sg0`; it has no write/erase/execute commands.
