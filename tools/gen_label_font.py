@@ -13,7 +13,8 @@ def katakana(s):return ''.join(chr(ord(c)+0x60) if 0x3041<=ord(c)<=0x3096 else c
 def generate():
  rows=json.loads((R/'web/syllables.json').read_text());assert len(rows)==128
  labels=[[h,katakana(h),r] for r,h in rows]
- path=os.environ.get('NSX39_LABEL_FONT','/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc')
+ cached=R/'.cache/NotoSansCJK-Bold.ttc'
+ path=os.environ.get('NSX39_LABEL_FONT',str(cached) if cached.is_file() else '/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc')
  font=ImageFont.truetype(path,40,index=0)
  atlas=bytearray();glyphs=[]
  chars=sorted(set(''.join(''.join(row) for row in labels)+'?—'))

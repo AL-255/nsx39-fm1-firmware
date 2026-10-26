@@ -4,10 +4,10 @@ All tools are host-side except the pi32v2 app and RAM loader. The build does not
 consume an NSX39 dump. Linux x86-64 is the tested hardware-compiler host.
 
 Prerequisites: Python 3 + Pillow, Node.js 20+, GCC/CC, Git, curl, xz, Clang 18 and
-wasm-ld, `/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`, and
-`/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc` (JP face, index 0).
+wasm-ld and `/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf`. Bootstrap
+downloads the pinned Noto CJK Bold font (JP face, index 0) into `.cache/`.
 For a conventional Ubuntu environment, the package names are `build-essential`,
-`clang`, `lld`, `fonts-dejavu-core`, `fonts-noto-cjk`, and `python3-pil`; installing them may need
+`clang`, `lld`, `fonts-dejavu-core`, and `python3-pil`; installing them may need
 administrator privileges. Development used existing packages plus toolchains
 isolated in `/tmp`, without sudo or APT on the host.
 
@@ -25,7 +25,9 @@ python3 -m http.server 8000 -d /tmp/nsx39-public-site
 
 `NSX39_CLANG` and `NSX39_WASM_LD` select the WebAssembly compiler/linker. There are
 no Node dependencies to install. `tools/bootstrap.sh` pins the compiler archive
-SHA-256 and SDK commit, and `build.py` checks all three SDK input hashes. The
+SHA-256, SDK commit and upstream Noto font SHA-256, and `build.py` checks all
+three SDK input hashes. The cached font is byte-identical to Ubuntu 24.04's
+`fonts-noto-cjk` Bold font; an installed copy remains a fallback. The
 JieLi download URL can change its latest release: if the hash changes, stop and
 audit the new compiler rather than accepting it silently.
 

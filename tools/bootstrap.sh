@@ -16,4 +16,15 @@ if [ ! -d "$TASK_CACHE/ac79-sdk/.git" ]; then
  git clone --depth 1 --single-branch --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git "$TASK_CACHE/ac79-sdk"
 fi
 [ "$(git -C "$TASK_CACHE/ac79-sdk" rev-parse HEAD)" = d179b4484759423312073f5fbb232501aa491047 ] || { echo 'Unexpected SDK revision' >&2; exit 1; }
-printf 'JIELI_TOOLCHAIN=%s/toolchain\nAC79_SDK=%s/ac79-sdk\n' "$TASK_CACHE" "$TASK_CACHE"
+TASK_FONT="$TASK_CACHE/NotoSansCJK-Bold.ttc"
+TASK_FONT_SHA=faa5f3656a78b2e2d450d27fe8382c778bc2b6bb5ea29c986664a6a435056ceb
+if [ ! -f "$TASK_FONT" ]; then
+ # The single upstream font is byte-identical to Ubuntu 24.04's font, without
+ # downloading the entire 61 MB CJK family from a potentially stalled APT mirror.
+ curl -fL --retry 3 --connect-timeout 15 --max-time 180 --speed-limit 10000 --speed-time 30 \
+  https://raw.githubusercontent.com/notofonts/noto-cjk/Sans2.004/Sans/OTC/NotoSansCJK-Bold.ttc -o "$TASK_FONT.tmp"
+ printf '%s  %s\n' "$TASK_FONT_SHA" "$TASK_FONT.tmp" | sha256sum -c -
+ mv "$TASK_FONT.tmp" "$TASK_FONT"
+fi
+printf '%s  %s\n' "$TASK_FONT_SHA" "$TASK_FONT" | sha256sum -c -
+printf 'JIELI_TOOLCHAIN=%s/toolchain\nAC79_SDK=%s/ac79-sdk\nNSX39_LABEL_FONT=%s\n' "$TASK_CACHE" "$TASK_CACHE" "$TASK_FONT"

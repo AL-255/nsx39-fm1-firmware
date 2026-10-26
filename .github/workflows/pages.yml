@@ -23,14 +23,16 @@ jobs:
       - name: Host build prerequisites
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang-18 lld-18 fonts-dejavu-core fonts-noto-cjk
+          sudo apt-get install -y clang-18 lld-18 fonts-dejavu-core
           python -m pip install Pillow==11.3.0
-      - name: Cache pinned cross compiler and SDK
+      - name: Cache pinned cross compiler, SDK and UI font
         uses: actions/cache@v4
         with:
           path: .cache
-          key: jieli-20260730-1-ac79-d179b448-emu-eef6d957-v2
-      - name: Download pinned cross compiler and SDK
+          key: jieli-20260730-1-ac79-d179b448-emu-eef6d957-font-faa5f365-v3
+          restore-keys: |
+            jieli-20260730-1-ac79-d179b448-emu-eef6d957-v2
+      - name: Download pinned cross compiler, SDK and UI font
         run: sh tools/bootstrap.sh
       - name: Build empty firmware template and preview engine
         env:
