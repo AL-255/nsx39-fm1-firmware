@@ -2,12 +2,14 @@
 import {Updater} from './lib/fm1ota.js';
 const $=id=>document.getElementById(id);
 let template,manifest,result,worker,downloadURL,audio,node,selected=0,octave=1,installing=false;
+// Physical boot failure reported 2026-10-26; keep installation disabled pending diagnosis.
+const INSTALLATION_BLOCKED=true;
 const status=message=>{$('status').textContent=message;};
 const held=new Map();let lastNote;
 function panic(){held.clear();lastNote=undefined;node?.port.postMessage({panic:true});$('playing').textContent='Released';document.querySelectorAll('.keys button').forEach(b=>b.classList.remove('down'));}
 function noteOn(key,offset){if(!node||installing)return;const note=53+12*octave+offset;held.set(key,note);lastNote=note;node.port.postMessage({note,selected});$('playing').textContent=`Playing #${selected}: ${result.pronunciations[selected]}`;$('pitch').textContent=`MIDI ${note}`;document.querySelector(`[data-offset="${offset}"]`)?.classList.add('down');}
 function noteOff(key){const old=held.get(key);held.delete(key);if(old===undefined)return;document.querySelectorAll('.keys button').forEach(b=>b.classList.remove('down'));const notes=[...held.values()];if(notes.length){lastNote=notes.at(-1);node.port.postMessage({note:lastNote,selected});}else{node?.port.postMessage({off:old});lastNote=undefined;$('playing').textContent='Released';}}
-function controls(){const ready=!!result&&!installing;$('install').disabled=!ready||!$('ack').checked||!navigator.requestMIDIAccess;$('generate').disabled=!template||!$('dump').files.length||installing;$('dump').disabled=installing;$('listen').disabled=!ready||installing;}
+function controls(){const ready=!!result&&!installing;$('install').disabled=INSTALLATION_BLOCKED||!ready||!$('ack').checked||!navigator.requestMIDIAccess;$('generate').disabled=!template||!$('dump').files.length||installing;$('dump').disabled=installing;$('listen').disabled=!ready||installing;}
 try{const [a,b]=await Promise.all([fetch('assets/template.fwsc'),fetch('assets/manifest.json')]);if(!a.ok||!b.ok)throw Error('Build assets are unavailable');template=await a.arrayBuffer();manifest=await b.json();status('Choose your NSX39 dump to begin.');controls();}catch(e){status(`Cannot load firmware build: ${e.message}`);}
 $('dump').onchange=()=>{panic();result=null;$('result').hidden=true;$('preview').hidden=true;$('listen').textContent='Start audio preview';worker?.terminate();if(downloadURL)URL.revokeObjectURL(downloadURL);status('Ready to validate your dump.');controls();};
 $('generate').onclick=async()=>{
@@ -35,7 +37,7 @@ window.addEventListener('keyup',e=>noteOff(e.code));window.addEventListener('blu
 $('oct-down').onclick=()=>{panic();octave=Math.max(0,octave-1);};$('oct-up').onclick=()=>{panic();octave=Math.min(2,octave+1);};$('panic').onclick=panic;$('ack').onchange=controls;
 window.addEventListener('beforeunload',e=>{if(installing){e.preventDefault();e.returnValue='Firmware installation is in progress.';}});
 $('install').onclick=async()=>{
- if(!result||installing||!$('ack').checked)return;installing=true;panic();controls();let wake;
+ if(INSTALLATION_BLOCKED||!result||installing||!$('ack').checked)return;installing=true;panic();controls();let wake;
  const progress=(phase,info)=>{$('install-status').textContent=({start:'Connected. Checking package…',verify:'Staging update loader…',loader:'Waiting for update loader…',write:'Checking and writing application sectors…',reboot:'Waiting for firmware to reboot…',done:`Installed: ${info}`})[phase]||phase;};
  try{wake=navigator.wakeLock?await navigator.wakeLock.request('screen').catch(()=>null):null;const access=await navigator.requestMIDIAccess({sysex:true});const updater=new Updater(access);if(!await updater.resume(result.image,progress,result.product))await updater.install(result.image,result.product,progress);}
  catch(e){$('install-status').textContent=`Installation stopped: ${e.message} Keep the generated package and follow the recovery instructions.`;}
