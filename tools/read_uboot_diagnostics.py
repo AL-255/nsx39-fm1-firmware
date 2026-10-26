@@ -9,6 +9,7 @@ Run with sudo only when device permissions require it.
 """
 import argparse,ctypes,fcntl,json,os,struct
 from pathlib import Path
+from uboot_codec import mengli
 class SG(ctypes.Structure):
  _fields_=[('interface_id',ctypes.c_int),('dxfer_direction',ctypes.c_int),('cmd_len',ctypes.c_ubyte),('mx_sb_len',ctypes.c_ubyte),('iovec_count',ctypes.c_ushort),('dxfer_len',ctypes.c_uint),('dxferp',ctypes.c_void_p),('cmdp',ctypes.c_void_p),('sbp',ctypes.c_void_p),('timeout',ctypes.c_uint),('flags',ctypes.c_uint),('pack_id',ctypes.c_int),('usr_ptr',ctypes.c_void_p),('status',ctypes.c_ubyte),('masked_status',ctypes.c_ubyte),('msg_status',ctypes.c_ubyte),('sb_len_wr',ctypes.c_ubyte),('host_status',ctypes.c_ushort),('driver_status',ctypes.c_ushort),('resid',ctypes.c_int),('duration',ctypes.c_uint),('info',ctypes.c_uint)]
 REGIONS=[('entry',0x01c07f20,32),('crash',0x01c7c000,72)]
@@ -32,7 +33,8 @@ def main():
   for label,address,n in REGIONS:
    cdb=b'\xfd\x07'+struct.pack('>IH',address,n)+b'\xff'*8
    data=receive(fd,cdb,n);(a.output/(label+'.bin')).write_bytes(data)
-   report['regions'][label]={'address':hex(address),'words':[f'{x:08x}' for x in struct.unpack('<'+'I'*(n//4),data)]}
+   decoded=mengli(data);(a.output/(label+'-decoded.bin')).write_bytes(decoded)
+   report['regions'][label]={'address':hex(address),'words':[f'{x:08x}' for x in struct.unpack('<'+'I'*(n//4),data)],'decoded_words':[f'{x:08x}' for x in struct.unpack('<'+'I'*(n//4),decoded)]}
   (a.output/'report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
  finally:os.close(fd)
 if __name__=='__main__':main()

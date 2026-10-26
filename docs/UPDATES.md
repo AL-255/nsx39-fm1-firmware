@@ -51,3 +51,24 @@ additional hardware may be needed. Do not assume every failure is USB-recoverabl
 
 No physical device was flashed during development. Hardware installation is a
 separate, explicit user action. This does not replace the device's mask-ROM/SPL.
+
+## RAM-only recovery for the diagnosed FM-1_939 marker failure
+
+The physical report is MengLi-scrambled. Decoding it locally showed valid SPL
+entry parameters, an invalid nonzero retained marker and a zeroed attempt counter,
+consistent with the faulty early UBOOT branch. There was no valid crash record.
+The supplied diagnostic now prints both raw and decoded words.
+
+`tools/recover_boot_state.py` defaults to read-only preflight. With explicit
+`--apply`, it checks the expected marker and update-request state, uploads a
+SHA-256-pinned 512-byte stub to SRAM `0x01c02000`, reads it back, and only then
+executes it. The stub's GPL source is in `firmware/recovery/`. It clears the two
+old boot-state words and the 128-byte RAM mailbox, then requests a core reset.
+No flash/NOR/SFC driver is linked, and the host helper has no erase/program or
+chip-key command. The existing installed firmware is left in flash.
+
+This is a temporary recovery step, not installation of the fixed image. A failed
+preflight/readback stops before execution. If the device stays black, do not
+repeat blindly or erase flash. Keep the physical diagnostic and use its result
+to choose the next step. Root device access may require sudo; do not send a
+password in chat. Physical execution of this recovery is pending.

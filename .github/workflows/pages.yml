@@ -41,11 +41,13 @@ jobs:
         run: |
           python tools/build.py
           python tools/build_web.py
+          python tools/build_recovery.py
       - name: Test code, blank template and synthetic voice data
         env:
           AC79_SDK: ${{ github.workspace }}/.cache/ac79-sdk
         run: |
           npm test
+          python -m unittest discover -s tests -p recovery_test.py
           python tools/test_updater.py
       - name: Boot real firmware with zero and dirty SRAM
         run: python tools/test_boot.py
