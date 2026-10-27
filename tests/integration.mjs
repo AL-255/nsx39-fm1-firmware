@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Optional local-only tests. Requires a user-owned NSX39 dump; never used in public CI.
 import {readFile,writeFile} from 'node:fs/promises';import assert from 'node:assert/strict';import {execFileSync} from 'node:child_process';
-import {generate,reconfigure} from '../web/lib/generator.js';import {Package} from '../web/lib/fm1pkg.js';import {extractDump,packBank} from '../web/lib/bank.js';
+import {generate} from '../web/lib/generator.js';import {Package} from '../web/lib/fm1pkg.js';import {extractDump,packBank} from '../web/lib/bank.js';
 const dump=await readFile(process.argv[2]);const manifest=JSON.parse(await readFile('build/manifest.json','utf8'));const template=await readFile('build/template.fwsc');
 const pkg=new Package(template);assert(pkg.dec.subarray(pkg.appOff+manifest.bankOffset,pkg.appOff+manifest.bankOffset+manifest.bankCapacity).every(x=>x===0));
 const result=await generate(dump,template,manifest);assert.equal(result.pronunciations.length,128);assert(result.bankBytes<=manifest.bankCapacity);
@@ -13,10 +13,6 @@ for(const note of [53,65,69,77,91,103]){e.nsx_reset();e.nsx_select(0);e.nsx_note
 // Play every extracted factory bank through the same controller as the panel.
 assert.deepEqual(new Uint8Array(result.bank.buffer,new DataView(result.bank.buffer).getUint32(48,true),1024),input.factoryLyrics);
 e.web_init();
-for(let mode=1;mode<16;mode++){e.performance_mode(mode);const ids=[...input.factoryLyrics.slice(mode*64,(mode+1)*64)].filter(x=>x<128);assert(ids.length);for(let lap=0;lap<2;lap++)for(let i=0;i<ids.length;i++){assert.equal(e.web_next(),ids[i]);e.performance_trigger(65+i%27,127);assert.equal(e.web_last(),ids[i]);assert.equal(e.web_next(),ids[(i+1)%ids.length]);}e.performance_select(-1);assert.equal(e.web_next(),ids[0]);}
+for(let mode=0;mode<16;mode++){e.performance_mode(mode+2);const ids=[...input.factoryLyrics.slice(mode*64,(mode+1)*64)].filter(x=>x<128);assert(ids.length);for(let lap=0;lap<2;lap++)for(let i=0;i<ids.length;i++){assert.equal(e.web_next(),ids[i]);e.performance_trigger(65+i%27,127);assert.equal(e.web_last(),ids[i]);assert.equal(e.web_next(),ids[(i+1)%ids.length]);}e.performance_select(-1);assert.equal(e.web_next(),ids[0]);}
 const modified=template.slice();modified[modified.length-1]^=1;await assert.rejects(generate(dump,modified,manifest),/hash mismatch/);
-const editedConfig=structuredClone(result.configuration);editedConfig.lyrics[6]=[71,60,66,101,7];editedConfig.values[0]=350;editedConfig.values[14]=6;
-const edited=await reconfigure(result,editedConfig,manifest),editedPackage=new Package(edited.bytes);
-assert.deepEqual(editedPackage.dec.subarray(editedPackage.appOff+manifest.bankOffset,editedPackage.appOff+manifest.bankOffset+edited.bank.length),edited.bank);
-new Uint8Array(e.memory.buffer,e.web_bank_ptr(),edited.bank.length).set(edited.bank);assert.equal(e.web_init(),1);assert.equal(e.web_next(),71);assert.equal(e.instrument_value(4),350);e.performance_trigger(53,127);assert.equal(e.web_next(),60);
-console.log(JSON.stringify({units:449,pronunciations:128,factoryBanks:15,bankBytes:result.bankBytes,losslessCycles:36,wasmMatchesNativeNotes:[53,65,69,77,91,103],packageSha256:result.sha256,snrDB:result.snrDB},null,2));
+console.log(JSON.stringify({units:449,pronunciations:128,factoryBanks:16,bankBytes:result.bankBytes,losslessCycles:36,wasmMatchesNativeNotes:[53,65,69,77,91,103],packageSha256:result.sha256,snrDB:result.snrDB},null,2));

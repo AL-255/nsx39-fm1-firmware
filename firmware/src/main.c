@@ -4,7 +4,7 @@
 #define FELUCCA_OTA 1
 #define FELUCCA_CDC 0
 #define FELUCCA_UAC 0
-#define FELUCCA_ID "FM-1_943"
+#define FELUCCA_ID "FM-1_944"
 // Miku cyan #39C5BB, quantized to the LCD's RGB565 format.
 #define UI_ACCENT 0x3e37u
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
@@ -70,7 +70,7 @@ void fm1_alnk0_irq(void){
 }
 static void text_line(unsigned y,const char*s,uint16_t color){
  // Small bitmap font rasterized from DejaVu Sans Mono; license in vendor/.
- extern const uint8_t ui_font[96][14];unsigned x=12;lcd_fill(0,y,240,28,0x0841);
+ extern const uint8_t ui_font[96][14];unsigned x=12;lcd_fill(0,y,240,28,0x0000);
  while(*s&&x<232){unsigned c=(unsigned char)*s++;if(c<32||c>127)c='?';for(unsigned row=0;row<14;row++)for(unsigned bit=0;bit<8;bit++)if(ui_font[c-32][row]&(1u<<bit))lcd_fill(x+bit,y+row,1,1,color);x+=8;}
 }
 #include "ui_font.h"

@@ -241,3 +241,44 @@ the editor after reload. The native 240×240 layout and the webpage were visuall
 inspected. Firmware data stays in ignored local files. Physical persistence,
 new memory-protocol writes and this build's audio/display behavior remain pending
 hardware validation; the prior FM-1_942 installation result is not extended to 943.
+
+## Independent device tools, DoReMi and black UI (FM-1_944)
+
+The webpage now has independently loaded Firmware, Lyric memories and Device
+settings tabs. Chrome tests in an isolated profile used a synthetic MIDI peer to
+read and edit all sixteen slots, save parameters, verify preservation of unrelated
+state, lock tab changes during transactions, and restore drafts after reload.
+Network inspection confirmed that device-only visits fetch no firmware assets,
+WASM or generation worker. A genuine-dump browser run generated FM-1_944, checked
+the exact eighteen-mode order, played C/do through the AudioWorklet, checked the
+last/next display, then saved a lyric over simulated SysEx and confirmed that the
+firmware package hash remained unchanged. No physical device writes were made.
+
+The public suite passes 38 JavaScript tests and 11 Python tests. New cases cover
+pitch-class DoReMi over three octaves, held-key fallback, SELECT inactivity in
+DoReMi, wrapping through all sixteen lyric memories, and state format 1/2
+migration. The actual C journal accepts an old committed selection, translates
+it once, saves format 2 and restores it without translating again. Saved device
+state now wins over a different package seed, replacing 943's seed precedence.
+Old-device protocol tests verify format 1 encoding for FM-1_943 and rejection of
+unsupported DoReMi/Lyrics 00 selection before any staging commands are sent.
+Journal power-cut/bounds tests continue under AddressSanitizer and UBSan.
+
+The latest real pi32v2 template boots with SRAM filled with 0x00, 0xA5 and 0xFF:
+each run reports the LCD on, eight frames and 140 audio halves at 550 ms. Native
+OTA and loader tests pass, including interruption/refusal and preservation of the
+flash head, settings storage and writes outside allowed windows. The loader and
+its flash layout are unchanged. The generated vocal package was run in the
+pinned emulator; captures show C/do in DoReMi and original bank 00 in Lyrics 00.
+Its 240×240 UI background is RGB(0,0,0), including antialiased glyph backgrounds.
+Chrome computed styles confirm black page, editor and graph backgrounds with
+Miku cyan accents.
+
+The final public template SHA-256 is
+`afa9fdcd63ed6f4f9ef6b9eaf742c50a83868cab00b43c68080c802d45efcab8`.
+The app is 566,160 bytes inside the 581,564-byte slot, with 54,552 bytes of normal
+RAM and a 117,888-byte pool. The genuine bank remains 484,172/491,520 bytes.
+Private integration plays all sixteen extracted banks through the shared
+controller and compares six native/WASM renders sample for sample. Physical
+validation of the new MIDI editors and FM-1_944 remains pending; the previously
+verified FM-1_942 installation is not evidence of a physical 944 test.

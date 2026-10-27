@@ -11,7 +11,7 @@ template=(R/'build/template.fwsc').read_bytes()
 if hashlib.sha256(template).hexdigest()!=manifest['templateSha256']:raise SystemExit('Template hash mismatch')
 # Prove the compiled reserve is empty using the package parser in a separate test.
 out.mkdir(parents=True,exist_ok=True)
-for rel in ['index.html','style.css','app.js','worker.js','voice-worklet.js','syllables.json','lib/bank.js','lib/generator.js','lib/fm1pkg.js','lib/fm1ota.js','lib/install-progress.js','lib/memory.js','lib/device-memory.js']:
+for rel in ['index.html','style.css','site.js','memory-editor.js','settings-editor.js','app.js','worker.js','voice-worklet.js','syllables.json','lib/bank.js','lib/generator.js','lib/fm1pkg.js','lib/fm1ota.js','lib/install-progress.js','lib/memory.js','lib/device-memory.js','lib/device-session.js']:
  (out/rel).parent.mkdir(parents=True,exist_ok=True)
  shutil.copyfile(R/'web'/rel,out/rel)
 # Version UI imports and entry points to avoid mixing cached protocol callbacks
@@ -32,9 +32,9 @@ def version_module(path):
     text=text.replace(quote+worker+quote,quote+worker+'?v='+version_module((out/worker).resolve())+quote)
  path.write_text(text);revisions[path]=hashlib.sha256(path.read_bytes()).hexdigest()[:16]
  return revisions[path]
-for rel in ['app.js','worker.js','voice-worklet.js']:version_module((out/rel).resolve())
+for rel in ['site.js','app.js','worker.js','voice-worklet.js']:version_module((out/rel).resolve())
 html=(out/'index.html').read_text()
-for rel in ['app.js','style.css']:
+for rel in ['site.js','style.css']:
  revision=hashlib.sha256((out/rel).read_bytes()).hexdigest()[:16]
  html=html.replace('"'+rel+'"','"'+rel+'?v='+revision+'"')
 (out/'index.html').write_text(html)

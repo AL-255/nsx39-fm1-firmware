@@ -11,7 +11,7 @@ class Voice extends AudioWorkletProcessor {
   if(d.adsr){this.e.nsx_adsr(d.adsr[0],d.adsr[1]);changed=persistent=true;}
   if(d.button!==undefined){this.e.nsx_panel_button(d.button);changed=persistent=true;}
   if(d.note!==undefined){if(d.revoice)this.e.performance_revoice(d.note,127);else this.e.performance_trigger(d.note,127);changed=true;}
-  if(changed)this.port.postMessage({state:true,last:this.e.web_last(),next:this.e.web_next(),upcoming:Array.from({length:this.e.instrument_value(2)?32:1},(_,i)=>this.e.performance_upcoming(i)),position:this.e.web_position(),articulation:this.articulation(),memory:persistent?Array.from(new Uint8Array(this.e.memory.buffer,this.e.web_state_ptr(),1120)):undefined});
+  if(changed)this.port.postMessage({state:true,last:this.e.web_last(),next:this.e.web_next(),upcoming:Array.from({length:this.e.instrument_value(2)>=2?32:1},(_,i)=>this.e.performance_upcoming(i)),position:this.e.web_position(),articulation:this.articulation(),memory:persistent?Array.from(new Uint8Array(this.e.memory.buffer,this.e.web_state_ptr(),1120)):undefined});
   if(d.off!==undefined)this.e.nsx_note_off(d.off);
   if(d.panic){const hold=d.keepHold&&this.articulation()[16];this.e.nsx_midi(0xb0,120,0);if(hold)this.e.nsx_midi(0xb0,64,127);}
  };}

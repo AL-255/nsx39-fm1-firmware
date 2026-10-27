@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Synthetic flash only: cuts at every program byte, rollover erase cuts,
-// unknown-data protection, duplicate saves and seed precedence. No hardware I/O.
+// unknown-data protection, duplicate saves and firmware-seed independence. No hardware I/O.
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
@@ -39,9 +39,11 @@ int main(void){
  memcpy(flash,baseline,sizeof flash);budget=-1;boot();for(unsigned i=0;i<3;i++){instrument_octave_set(i%2);assert(!persistence_flush());}assert((save_address&~4095u)==SAVE_LO+4096);memcpy(baseline,flash,sizeof flash);unsigned old=instrument_octave();
  for(int cut=0;cut<16+4096+1124;cut+=17){memcpy(flash,baseline,sizeof flash);budget=-1;boot();instrument_octave_set(old?0:1);budget=cut;int result=persistence_flush();budget=-1;boot();assert(instrument_octave()==(result?old:(old?0u:1u)));unsigned restored=instrument_octave();instrument_octave_set(restored?0:1);assert(!persistence_flush());boot();assert(instrument_octave()==(restored?0u:1u));}
  memset(flash,255,sizeof flash);memset(flash+SAVE_LO,0x5a,SAVE_HI-SAVE_LO);budget=-1;boot();count=programs;unsigned e=erases;assert(persistence_flush()==-2);assert(programs==(int)count&&erases==(int)e);for(unsigned i=SAVE_LO;i<SAVE_HI;i++)assert(flash[i]==0x5a);
- memset(flash,255,sizeof flash);boot();uint8_t future[STATE_BYTES];instrument_export(future,0);future[4]=2;memcpy(flash+SAVE_LO,future,sizeof future);memcpy(flash+SAVE_LO+4096,future,sizeof future);boot();count=programs;e=erases;assert(persistence_flush()==-2);assert(programs==(int)count&&erases==(int)e);
- memset(flash,255,sizeof flash);boot();instrument_octave_set(2);assert(!persistence_flush());uint8_t seed[STATE_BYTES];instrument_defaults();nsx_adsr(0,250);instrument_export(seed,0);assert(instrument_init(seed,sizeof seed));persistence_load();assert(instrument_value(SET_ATTACK)==250);assert(instrument_octave()==0);assert(!persistence_flush());instrument_defaults();assert(instrument_init(seed,sizeof seed));persistence_load();assert(instrument_value(SET_ATTACK)==250);
+ memset(flash,255,sizeof flash);boot();uint8_t future[STATE_BYTES];instrument_export(future,0);future[4]=3;memcpy(flash+SAVE_LO,future,sizeof future);memcpy(flash+SAVE_LO+4096,future,sizeof future);boot();count=programs;e=erases;assert(persistence_flush()==-2);assert(programs==(int)count&&erases==(int)e);
+ memset(flash,255,sizeof flash);boot();instrument_octave_set(2);assert(!persistence_flush());uint8_t seed[STATE_BYTES];instrument_defaults();nsx_adsr(0,250);instrument_export(seed,0);assert(instrument_init(seed,sizeof seed));persistence_load();assert(instrument_value(SET_ATTACK)==0);assert(instrument_octave()==2);assert(!persistence_flush());instrument_defaults();assert(instrument_init(seed,sizeof seed));persistence_load();assert(instrument_value(SET_ATTACK)==0);assert(instrument_octave()==2);
  instrument_export(seed,0);seed[40]^=1;assert(!instrument_import(seed,sizeof seed,0));
+ // Migrate a committed v1 selection to v2 exactly once, including journal ownership.
+ memset(flash,255,sizeof flash);boot();instrument_export(seed,7);seed[4]=1;seed[60]=6;sw32(seed+12,state_crc(seed,sizeof seed));memcpy(flash+SAVE_LO,seed,sizeof seed);memcpy(flash+SAVE_LO+STATE_BYTES,"NSXC",4);boot();assert(instrument_value(SET_LYRIC)==8);assert(!persistence_flush());boot();assert(instrument_value(SET_LYRIC)==8);instrument_export(seed,0);assert(seed[4]==2);
  // Exercise the actual firmware SysEx implementation, not just a JS peer.
  memset(flash,255,sizeof flash);boot();uint8_t desired[STATE_BYTES],actual[STATE_BYTES];instrument_octave_set(1);instrument_export(desired,0);instrument_octave_set(0);
  for(unsigned i=0;i<9;i++){uint8_t chunk=i;command(1,&chunk,1);assert(wire[8]==i);unsigned n=STATE_BYTES-i*128;if(n>128)n=128;assert(ota_unpack7(wire+9,wire_n-11,actual+i*128,n)==n);}assert(instrument_valid(actual,sizeof actual));
@@ -50,5 +52,5 @@ int main(void){
  desired[100]^=1;stage(desired);command(3,0,0);assert(wire[8]==2);boot();assert(instrument_octave()==1);
  memset(flash,255,sizeof flash);boot();assert(!persistence_flush());instrument_octave_set(1);fail_commit_read=1;assert(persistence_flush()==-1);instrument_octave_set(2);assert(!persistence_flush());boot();assert(instrument_octave()==2);
  memset(flash,255,sizeof flash);boot();assert(!persistence_flush());instrument_octave_set(1);fail_commit_read=1;assert(persistence_flush()==-1);instrument_octave_set(0);assert(!persistence_flush());boot();assert(instrument_octave()==0);
- puts("Journal passed: every program cut, erase rollover cuts, foreign storage, deduplication, seed precedence and CRC rejection");return 0;
+ puts("Journal passed: every program cut, erase rollover cuts, foreign storage, deduplication, firmware-seed independence and CRC rejection");return 0;
 }

@@ -1,8 +1,8 @@
 # NSX39 vocal debug firmware for M-VAVE FM-1
 
 A GPL-3.0-only native vocal firmware and **browser-local firmware generator**.
-The debug instrument plays individual syllables or the original lyric banks.
-**ALGORITHM chooses a lyric; the keys trigger and pitch its syllables; the display
+The debug instrument plays individual syllables, pitch-based DoReMi, or sixteen lyric memories.
+**ALGORITHM chooses a performance mode; the keys trigger and pitch its syllables; the display
 shows the last played syllable, the next one, and the output waveform.**
 
 Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
@@ -11,7 +11,7 @@ Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 `FM-1_939` was fixed in `FM-1_941`; the user subsequently reported a working
 installation. `FM-1_942` installation and automatic restart were verified on a
 physical FM-1 using native USB-MIDI and the live Pages generator on 2026-10-26.
-Current `FM-1_943` adds editable lyrics, persistent settings and a larger display.
+Current `FM-1_944` adds DoReMi, all sixteen lyric slots, and separate MIDI editors for lyric memories and device settings.
 It retains the startup fix; physical validation of this new build remains pending.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
 port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
@@ -38,7 +38,7 @@ On the FM-1:
 
 | Control | Debug behavior |
 |---|---|
-| ALGORITHM encoder | Lyric 0: manual; lyrics 1–15: original firmware banks |
+| ALGORITHM encoder | Selectable syllable → DoReMi → Lyrics 00–15 |
 | SELECT encoder | Manual: pronunciation 0–127, wrapping. Lyric: left restarts, right reserved |
 | PRESETS encoder | Cycle hiragana, katakana and romaji labels |
 | 27 keys | Monophonic trigger/pitch; each new key press advances one lyric syllable |
@@ -54,7 +54,7 @@ On the FM-1:
 | USB MIDI and TRS MIDI | Vocal channel 1 note/velocity/CC/bend |
 
 The largest label retains the **last played** syllable, even after key release,
-rewind, or a selection change. The **next** syllable appears below in smaller type.
+rewind, or a selection change. The **next** sequence appears alongside in smaller type.
 PRESETS changes both labels using a 40-pixel antialiased Noto Sans CJK JP font
 (20 pixels for the upcoming syllable). The display shows current articulation
 settings and an ADSR diagram with its active segment and live level cursor, beside
@@ -68,11 +68,10 @@ loops; banks 6–10 are factory phrases, and 11–15 preserve the original dupli
 user slots. Selecting a bank or turning SELECT left resets its next syllable;
 neither triggers sound or changes the last played label. Returning to manual mode
 restores its previous SELECT choice. Releasing a key while another remains held
-changes pitch without advancing the lyric. USB/TRS channel-1 note-on also advances;
+changes pitch without advancing the lyric. DoReMi uses fixed Do (C = do), with sharp notes using the preceding natural note’s syllable, and updates its syllable when a held-key fallback changes pitch. USB/TRS channel-1 note-on also advances;
 note-off and zero-velocity note-on do not. Memories and parameters are saved
 when idle and restored after power-off. The webpage accepts kana/romaji lyrics,
-remembers edits locally, includes them in generated firmware and can read/save
-memories on FM-1_943 without reflashing. See [memories and settings](docs/MEMORIES.md).
+remembers drafts locally, and reads/saves memories in a separate **Lyric memories** tab over SysEx. The **Device settings** tab edits parameters over SysEx. These tabs need no dump or firmware generation; generated packages always contain factory defaults, and preview preferences do not change the package. Saved device state survives firmware updates. See [memories and settings](docs/MEMORIES.md).
 
 ## No proprietary data in this repository or its Pages deployment
 

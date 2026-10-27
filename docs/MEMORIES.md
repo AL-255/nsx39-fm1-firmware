@@ -1,26 +1,33 @@
-# Lyric memories and permanent settings (FM-1_943)
+# Lyric memories and permanent settings (FM-1_944)
 
-The webpage edits memories 1–15; memory 0 remains the manual syllable selector.
-Each memory holds 1–63 pronunciation IDs and loops. Enter hiragana, katakana or
-romaji, with optional spaces/punctuation. Exact IDs use `#0` through `#127`;
-these also distinguish the nasal variants. Unsupported characters and oversized
-memories are rejected before generating or sending anything.
+The webpage has three independent tabs: **Firmware**, **Lyric memories**, and
+**Device settings**. The two device editors use USB-MIDI SysEx; neither loads
+firmware assets nor requires an NSX39 dump. Generated firmware always starts
+with factory defaults. Preview preferences affect only the browser preview.
 
-**Keep changes** saves the selected memory in this browser, updates the live
-preview, and rebuilds the firmware download without recompressing the recordings.
-The downloaded package includes all edited memories and the current preview
-parameters. The original factory table is retained separately, allowing
-**Restore original memory** and the firmware's reset option to restore its source
-defaults. Browser storage contains settings and syllable IDs, never the dump or
-audio. Clearing the site's storage removes its remembered edits.
+ALGORITHM cycles **Selectable syllable → DoReMi → Lyrics 00–15**. Selectable
+syllable retains its SELECT choice. DoReMi uses fixed Do: C/do, D/re, E/mi,
+F/fa, G/so, A/ra, B/shi; sharps use the preceding natural note’s syllable.
+SELECT has no action in DoReMi. Each lyric holds 1–63 syllables and loops;
+SELECT left rewinds it and right remains reserved. All sixteen source banks,
+including bank 00, are available. Original bank numbers are retained.
 
-After installing FM-1_943, **Read from FM-1** reads all memories and settings.
-**Save this memory to FM-1** first reads the instrument's state, replaces only
-the selected memory, transfers the complete validated configuration, commits it
-to the settings journal, then reads it back. Other device parameters and memories
-are preserved. Release keys and sustain hold before saving. The webpage reports
-success only after the durable-save acknowledgement and matching readback.
-Older firmware is detected and refused before any memory-write command is sent.
+In **Lyric memories**, connect/read, choose 00–15, and enter hiragana, katakana
+or romaji with optional spaces/punctuation. Exact IDs use `#0` through `#127`.
+Browser drafts survive reloads. **Save memory to FM-1** reads fresh device state,
+replaces only that bank, commits it, and verifies readback. **Reload selected
+memory** discards that bank’s browser draft. Reading all banks retains drafts.
+
+In **Device settings**, connect/read, change parameters, then save. Only changed
+parameters are merged into freshly read device state; lyrics and untouched
+parameters are preserved. **Use default values** stages defaults for review;
+**Save settings to FM-1** applies them. Browser drafts contain settings and
+syllable IDs, never the dump or audio. Clearing site storage removes drafts.
+
+Release keys and sustain hold before saving. Both editors report success only
+after durable acknowledgement and matching readback. FM-1_943 supports these
+editors with its older mode list; DoReMi and Lyrics 00 selection require
+FM-1_944. Older firmware is refused before memory-write commands.
 
 ## Panel and display
 
@@ -30,7 +37,7 @@ Older firmware is detected and refused before any memory-write command is sent.
 - In settings, knob 1 selects an item and knob 2 changes its value. Knobs 3/4
   do not alter the ADSR while settings is open. Outside settings, knobs 1–4
   still set attack, decay, sustain and release.
-- Settings include octave, label script, memory/manual syllable, ADSR, automatic
+- Settings include octave, label script, mode/manual syllable, ADSR, automatic
   pitch/dynamics, vibrato type/rate/depth/delay, glide, noise, connection and hold.
 - At **Reset all**, turn knob 2 right to arm, then right again to confirm.
   Selecting another item or exiting cancels the confirmation. Reset restores
@@ -71,10 +78,17 @@ retry an interrupted erase/program without treating torn target bytes as a
 foreign format. The updater's last-256-byte scan region remains erased.
 Unfamiliar formats are not erased: saving reports occupied storage instead.
 
-A new generated settings seed takes precedence over records from a different
-seed. An unchanged seed preserves the instrument's saved changes across firmware
-updates. Thus explicitly edited packages take effect without silently discarding
-ordinary device changes on every update.
+A committed device configuration takes precedence over the package’s initial
+seed, even when that seed changes. The seed is used only when no valid saved
+record exists. Updating firmware therefore preserves saved lyrics and settings.
+Reset all restores the original source banks and defaults.
+
+State format 2 uses mode 0 for selectable syllable, 1 for DoReMi and 2–17 for
+Lyrics 00–15. Format 1 records migrate automatically: manual stays 0, and an old
+nonzero lyric mode gains 2. New journal writes use format 2, so the migration
+happens once. The browser converts to format 1 when talking to FM-1_943 and
+rejects modes that firmware cannot play before staging data. The SysEx envelope
+version remains 1.
 
 The private, noncommercial MIDI envelope is `F0 7D 4E 53 58 01 command request-id
 payload checksum F7`, with a 7-bit additive checksum. Commands read chunks,

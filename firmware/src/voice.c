@@ -95,7 +95,7 @@ void nsx_note_on(uint8_t note,uint8_t vel){
  if(!bank_ok)return;if(!vel){nsx_note_off(note);return;}
  unsigned legato=gate;glide_start_cents=current_cents;glide_elapsed=0;glide_length=legato?((unsigned)controls[8]*NSX_RATE/127u):0;
  current_note=note;velocity=vel;gate=1;release_pending=release_unit=0;age=0;articulation_note_on(legato);
- if(solfege){static const uint8_t sol[12]={0,0,1,1,2,3,3,4,4,5,5,6};unsigned ix[7]={25,40,86,0,4,104,2};unsigned s=sol[note%12];selected=ix[s];parse_lyrics(nsx_pronunciation(selected),0);}
+ if(solfege){static const uint8_t sol[12]={0,0,1,1,2,3,3,4,4,5,5,6};unsigned ix[7]={50,114,101,95,25,111,32};unsigned s=sol[note%12];selected=ix[s];parse_lyrics(nsx_pronunciation(selected),0);}
  unsigned n=syllable_count?(fixed_syllable?selected:lyric_cursor)%syllable_count:0;playing_syllable=n;phrase_len=syllable_n[n];for(unsigned k=0;k<phrase_len;k++)phrase[k]=syllables[n][k];phrase_pos=0;
  lyric_cursor=syllable_count?(lyric_cursor+1)%syllable_count:0;if(!fixed_syllable)selected=n;
  if(!gain_q15)current_name=(unsigned)name_id("Sil");

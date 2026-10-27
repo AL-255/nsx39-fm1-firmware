@@ -6,7 +6,7 @@ static void put_text(unsigned x,unsigned y,const char*s,uint16_t color,unsigned 
 }
 static void label_num(unsigned x,unsigned y,const char*label,unsigned n){char b[12];put_text(x,y,label,0xad55,1);number(b,n);put_text(x+str_len(label)*8,y,b,0xffff,1);}
 static void ui_line(int x,int y,int xx,int yy,uint16_t color){int dx=xx>x?xx-x:x-xx,dy=yy>y?yy-y:y-yy,sx=x<xx?1:-1,sy=y<yy?1:-1,error=dx-dy;for(;;){if(x>=0&&x<240&&y>=0&&y<240)canvas[y*240+x]=color;if(x==xx&&y==yy)break;int e=error*2;if(e>-dy){error-=dy;x+=sx;}if(e<dx){error+=dx;y+=sy;}}}
-static const char*const settings_names[]={"Octave","Labels","Lyric memory","Syllable","Attack ms","Decay ms","Sustain %","Release ms","Auto pitch","Auto dynamics","Vibrato type","Vibrato rate","Vibrato depth","Vib delay ms","Glide","Noise","Connection","Hold","Reset all"};
+static const char*const settings_names[]={"Octave","Labels","Mode","Syllable","Attack ms","Decay ms","Sustain %","Release ms","Auto pitch","Auto dynamics","Vibrato type","Vibrato rate","Vibrato depth","Vib delay ms","Glide","Noise","Connection","Hold","Reset all"};
 static const char*const types[]={"EXTREME","FAST","NORMAL","SLIGHT"};
 static const char*const scripts[]={"HIRAGANA","KATAKANA","ROMAJI"};
 static const char*const connections[]={"50ms","MIN","VEL"};
@@ -17,6 +17,7 @@ static void settings_screen(void){
   unsigned item=first+row,y=29+row*20;uint16_t color=item==settings_item?UI_ACCENT:0xad55;
   if(item==settings_item)put_text(0,y,">",UI_ACCENT,1);put_text(12,y,settings_names[item],color,1);
   const char*text=0;unsigned value=instrument_value(item);
+  char mode_text[12];if(item==SET_LYRIC){if(value==0)text="SELECT";else if(value==1)text="DOREMI";else{mode_text[0]='L';mode_text[1]='0'+(value-2)/10;mode_text[2]='0'+(value-2)%10;mode_text[3]=0;text=mode_text;}}
   if(item==SET_SCRIPT)text=scripts[value];if(item==SET_VIBTYPE)text=types[value];if(item==SET_JOIN)text=connections[value];
   if(item==SET_PITCH||item==SET_DYNAMICS||item==SET_HOLD)text=value?"ON":"OFF";
   if(item==SET_RESET)text=reset_armed?"AGAIN >":"TURN >";
@@ -28,14 +29,15 @@ static void settings_screen(void){
 static void screen(void){
  nsx_debug_t state;nsx_art_debug_t art;performance_state_t song;int16_t wave[102];
  __asm__ volatile("cli":::"memory");nsx_debug(&state);nsx_art_debug(&art);performance_snapshot(&song);unsigned w=scope_w;for(unsigned i=0;i<102;i++)wave[i]=scope[(w-102+i)&511];__asm__ volatile("sti":::"memory");
- for(unsigned i=0;i<240*240;i++)canvas[i]=0x0841;
+ for(unsigned i=0;i<240*240;i++)canvas[i]=0x0000;
  if(settings_open)settings_screen();
  else if(!voice_ready){put_text(8,40,"NO VALID VOICE BANK",0xfca0,1);put_text(8,64,"Generate with your dump",0xffff,1);}
  else{
   unsigned script=instrument_script();put_text(8,5,"Last played",0xad55,1);put_text(128,5,"Next",0xad55,1);
   const char*last=song.has_last?ui_syllable(song.last,script):"—";unsigned div=ui_label_width(last,1)>112?2:1;ui_label(canvas,8,66,last,div,UI_ACCENT);
-  unsigned x=128;for(unsigned n=0;n<(song.mode?32u:1u);n++){const char*s=ui_syllable(performance_upcoming(n),script);unsigned width=ui_label_width(s,2);if(!width||x+width>236)break;ui_label(canvas,(int)x,57,s,2,UI_ACCENT);x+=width+2;}
-  label_num(8,77,"L",song.mode);label_num(48,77,"STEP",song.mode?song.cursor+1:1);if(song.mode)label_num(96,77,"/",song.length);label_num(136,77,"N",state.note);label_num(176,77,"Oct",instrument_octave());
+  if(song.mode==1)put_text(128,43,"By pitch",UI_ACCENT,1);
+  unsigned x=128;for(unsigned n=0;n<(song.mode==1?0u:song.mode>=2?32u:1u);n++){const char*s=ui_syllable(performance_upcoming(n),script);unsigned width=ui_label_width(s,2);if(!width||x+width>236)break;ui_label(canvas,(int)x,57,s,2,UI_ACCENT);x+=width+2;}
+  if(song.mode<2)put_text(8,77,song.mode?"DOREMI":"SELECT",UI_ACCENT,1);else{char mode_label[]={'L',(char)('0'+(song.mode-2)/10),(char)('0'+(song.mode-2)%10),0};put_text(8,77,mode_label,UI_ACCENT,1);}if(song.mode>=2)label_num(48,77,"STEP",song.cursor+1);if(song.mode>=2)label_num(96,77,"/",song.length);label_num(136,77,"N",state.note);label_num(176,77,"Oct",instrument_octave());
   put_text(8,98,"VIB",0xad55,1);put_text(40,98,art.vibrato_depth?types[art.vibrato_type]:"OFF",UI_ACCENT,1);label_num(112,98,"D",art.vibrato_depth);label_num(176,98,"R",art.vibrato_rate);
   label_num(8,116,"Delay ",art.vibrato_delay);label_num(136,116,"Glide ",art.portamento);
   put_text(8,134,art.auto_pitch?"Pitch ON":"Pitch OFF",UI_ACCENT,1);put_text(96,134,art.auto_dynamics?"Dyn ON":"Dyn OFF",UI_ACCENT,1);

@@ -22,15 +22,15 @@ static int save_intent(uint32_t sector,uint32_t target,int current){
  return !current||(to==target&&save_u32(save_verify+8)==save_sequence);
 }
 static int save_owned(uint32_t sector){
- static const uint8_t head[12]={'N','S','X','S',1,0,0,0,0x60,4,0,0};
+ static const uint8_t head[12]={'N','S','X','S',2,0,0,0,0x60,4,0,0},old_head[12]={'N','S','X','S',1,0,0,0,0x60,4,0,0};
  for(unsigned slot=0;slot<3;slot++){
   unsigned off=sector+slot*SAVE_STRIDE;
   if(!save_empty(off,STATE_BYTES+4)){
    if(save_read(off,save_verify,12))return 0;
-   if(!save_equal(save_verify,head,12)){
+   if(!save_equal(save_verify,head,12)&&!save_equal(save_verify,old_head,12)){
     // A sequentially interrupted first header may precede any committed
     // record. Accept only an exact known prefix followed entirely by erase.
-    unsigned k=0;while(k<12&&save_verify[k]==head[k])k++;
+    unsigned k=0,j=0;while(k<12&&save_verify[k]==head[k])k++;while(j<12&&save_verify[j]==old_head[j])j++;if(j>k)k=j;
     if(!k||k==12||!save_empty(off+k,STATE_BYTES+4-k))return 0;
    }
   }
@@ -49,11 +49,13 @@ static void persistence_load(void){
   if(!save_have||(int32_t)(sequence-save_sequence)>0){save_have=1;save_sequence=sequence;save_address=off;for(unsigned i=0;i<STATE_BYTES;i++)save_previous[i]=save_record[i];}
  }
  save_attempt_sequence=save_sequence;
- if(save_have&&!instrument_import(save_previous,STATE_BYTES,1))save_status=1;
+ // Device memories/settings are independent of the package's initial seed.
+ // Firmware updates must not replace an existing committed configuration.
+ if(save_have)instrument_import(save_previous,STATE_BYTES,0);
 }
 static int persistence_flush(void){
  unsigned next=save_attempt_sequence+1;instrument_export(save_record,next);
- if(save_have&&!save_uncertain&&save_equal(save_record+16,save_previous+16,4)&&save_equal(save_record+32,save_previous+32,STATE_BYTES-32)){save_status=0;return 0;}
+ if(save_have&&!save_uncertain&&save_equal(save_record+4,save_previous+4,4)&&save_equal(save_record+16,save_previous+16,4)&&save_equal(save_record+32,save_previous+32,STATE_BYTES-32)){save_status=0;return 0;}
  // A commit may reach flash even if its verification read fails. Do not reuse
  // its sequence during this boot, or a later acknowledged save could tie it.
  save_attempt_sequence=next;
