@@ -4,7 +4,7 @@
 #define FELUCCA_OTA 1
 #define FELUCCA_CDC 0
 #define FELUCCA_UAC 0
-#define FELUCCA_ID "FM-1_944"
+#define FELUCCA_ID "FM-1_945"
 // Miku cyan #39C5BB, quantized to the LCD's RGB565 format.
 #define UI_ACCENT 0x3e37u
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
@@ -63,7 +63,7 @@ void fm1_alnk0_irq(void){
  uint32_t t=fm1_ticks();uint8_t p=fm1_audio_pending();audio_busy=1;fm1_audio_ack_aux(p);
  if(p&FM1_AUDIO_HALF){int32_t*out=dma_audio+fm1_audio_free_half()*256;panel_audio();int16_t mono[64];if(!updating)nsx_render(mono,64);else for(unsigned i=0;i<64;i++)mono[i]=0;
   // 22.05 -> 44.1 kHz linear interpolator, continuous between halves.
-  static int32_t prev;for(unsigned i=0;i<64;i++){int32_t s=mono[i];scope[scope_w++&511]=(int16_t)(s*(int32_t)master_level/1024);int32_t mid=(prev+s)/2,g=(int32_t)master_level;out[i*4]=out[i*4+1]=(mid*g/1024)*128;out[i*4+2]=out[i*4+3]=(s*g/1024)*128;prev=s;}
+  static int32_t prev;if(updating)prev=0;for(unsigned i=0;i<64;i++){int32_t s=mono[i];scope[scope_w++&511]=(int16_t)(s*(int32_t)master_level/1024);int32_t mid=(prev+s)/2,g=(int32_t)master_level;out[i*4]=out[i*4+1]=(mid*g/1024)*128;out[i*4+2]=out[i*4+3]=(s*g/1024)*128;prev=s;}
   fm1_audio_ack_half();frame_counter++;
  }
  render_us=(fm1_ticks()-t)/24;if(render_us>render_max_us)render_max_us=render_us;if(render_us>2900)audio_late++;audio_busy=0;
@@ -113,19 +113,7 @@ static void panel_controls(void){
 static int save_read(uint32_t off,void*p,unsigned n){if(!FL_IN(off,n,SAVE_LO,SAVE_HI))return -1;__asm__ volatile("cli":::"memory");int rc=FL_FAR(fl_read_ram)(off,p,n);if(runtime_ready)__asm__ volatile("csync\nsti":::"memory");return rc;}
 static int save_write(uint32_t off,const void*p,unsigned n){if(!save_supported||!FL_IN(off,n,SAVE_LO,SAVE_HI))return -1;fm1_wdt_feed();return fl_write(off,p,n);}
 static int save_erase(uint32_t off){if(!save_supported||!FL_IN(off,4096,SAVE_LO,SAVE_HI)||(off&4095))return -1;uint32_t took;fm1_wdt_feed();return fl_erase4k(off,&took);}
-static int settings_flush(void){
- if(nsx_active()||fm1_in.notes||mi_r!=mi_w||updating)return -3;
- updating=1;fm1_audio_stop();int result=persistence_flush();
- if(!result){instrument_export(save_record,0);settings_crc=save_u32(save_record+12);settings_dirty=0;}
- for(unsigned i=0;i<512;i++)dma_audio[i]=0;FM1_ALNK_CON0|=0x800u;updating=0;return result;
-}
-static void settings_poll(void){
- if(fm1_ms-settings_checked<250)return;settings_checked=fm1_ms;
- __asm__ volatile("cli":::"memory");instrument_export(save_record,0);__asm__ volatile("sti":::"memory");
- uint32_t current=save_u32(save_record+12);if(current!=settings_crc){settings_crc=current;settings_changed=fm1_ms;settings_dirty=1;}
- if(save_uncertain&&!settings_dirty){settings_dirty=1;settings_changed=fm1_ms;}
- if(settings_dirty&&fm1_ms-settings_changed>=2000&&!nsx_active()&&!fm1_in.notes&&!usb.ota_req&&!updating){settings_flush();settings_changed=fm1_ms;}
-}
+#include "settings_save.c"
 #include "memory_midi.c"
 extern uint32_t _data_start[],_data_end[],_data_load[],_bss_start[],_bss_end[],_pool_start[],_pool_end[],_rt_start[],_rt_end[],_rt_load[];
 // Retained SRAM is outside the C zero-initialization contract. Volatile forces

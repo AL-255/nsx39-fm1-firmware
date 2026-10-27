@@ -77,9 +77,9 @@ body=head(pkg.crc16(raw),len(raw),0x01c0a800,0,b'usb_hid_ota.bin')+blocks
 ota=head(pkg.crc16(body),32,len(body),0x41,b'usb_hid_ota.bin')+body
 (ldr/'ota.bin').write_bytes(ota)
 pkg.SDK=SDK
-template=pkg.ufw(pkg.flash_image(app,pkg.KEY),ota,'FM-1_944')
+template=pkg.ufw(pkg.flash_image(app,pkg.KEY),ota,'FM-1_945')
 (OUT/'template.fwsc').write_bytes(template)
-manifest={'format':1,'product':'FM-1_944','version':'0.4.1-debug','bankOffset':bank_offset,'bankCapacity':0x78000,'appBytes':len(app),'templateSha256':hashlib.sha256(template).hexdigest(),'hardwareValidated':False,'compatibility':'experimental-native-vocals','loaderSource':'hugelton/Felucca@440e62ce8a33d9bb285ab6bbca9a0fd50e459648','ramBytes':sym('_bss_end')-0x1c08000,'poolBytes':sym('_pool_end')-sym('_pool_start')}
+manifest={'format':1,'product':'FM-1_945','version':'0.4.2-debug','bankOffset':bank_offset,'bankCapacity':0x78000,'appBytes':len(app),'templateSha256':hashlib.sha256(template).hexdigest(),'hardwareValidated':False,'compatibility':'experimental-native-vocals','loaderSource':'hugelton/Felucca@440e62ce8a33d9bb285ab6bbca9a0fd50e459648','ramBytes':sym('_bss_end')-0x1c08000,'poolBytes':sym('_pool_end')-sym('_pool_start')}
 if manifest['ramBytes']>72*1024-4096:sys.exit('Insufficient RAM headroom')
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print(json.dumps(manifest,indent=2))

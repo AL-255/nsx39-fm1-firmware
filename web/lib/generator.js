@@ -3,7 +3,7 @@ import {extractDump,packBank,sha256,CAPACITY} from './bank.js';
 import {encodeMemory,lyricArrays,DEFAULT_VALUES} from './memory.js';
 import {Package,logicalImage} from './fm1pkg.js';
 export async function generate(dump,templateBytes,manifest,report=()=>{}) {
- if(manifest.format!==1||manifest.product!=='FM-1_944'||manifest.bankCapacity!==CAPACITY)throw Error('Unsupported firmware build manifest');
+ if(manifest.format!==1||manifest.product!=='FM-1_945'||manifest.bankCapacity!==CAPACITY)throw Error('Unsupported firmware build manifest');
  if(await sha256(templateBytes)!==manifest.templateSha256)throw Error('Firmware template hash mismatch. Reload the page.');
  report('Validating the NSX39 dump…');const database=await extractDump(dump);
  const config={lyrics:lyricArrays(database.factoryLyrics),values:[...DEFAULT_VALUES]};

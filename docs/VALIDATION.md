@@ -282,3 +282,45 @@ Private integration plays all sixteen extracted banks through the shared
 controller and compares six native/WASM renders sample for sample. Physical
 validation of the new MIDI editors and FM-1_944 remains pending; the previously
 verified FM-1_942 installation is not evidence of a physical 944 test.
+
+
+## Idle clicks and uninterrupted saves (FM-1_945)
+
+The reported symptom was a click near the end of a long release, followed by
+periodic idle clicks (the user estimated about once a second). The recorded-unit
+renderer produced exact zero after release in both WASM and the actual pi32v2
+emulator. The native application nevertheless disabled/re-enabled ALNK audio
+when autosave ran; occupied storage made it repeat that sequence on every retry.
+This is a confirmed clock interruption capable of disturbing the external codec.
+The emulator does not model that codec's analog pop, so the user's exact audible
+symptom still needs physical confirmation.
+
+The diagnostic scenario set release to 4,000 ms and played three panel notes,
+last released at 1,120 ms. An emulator-only ALNK enable trace observed the old
+application stop/restart at cycles 1,267,283,549/1,267,627,943 on a successful save.
+With synthetic foreign journal sectors, it stopped/restarted at
+1,267,283,549/1,267,362,749 and again at 1,747,763,583/1,747,842,469. The latter
+are about two seconds apart, matching the autosave retry interval; this is not
+an exact timing reproduction of the user's estimate. Occupied storage remained
+untouched and reported status -2. The fixed save path had only the initial
+ALNK enable in the same eight-second successful/occupied-storage scenarios.
+
+The fix waits for two audio interrupts to fill the complete DMA ring with
+silence, then leaves DMA and the codec clock running while the RAM flash driver
+masks interrupts. Maintenance also clears the interpolator's previous sample,
+so the silent halves cannot contain a residual sample after panic/zero release.
+Admission is serialized against note handling and a 20 ms timeout defers the
+save if audio is not advancing. Saving, verification and journal bounds are
+unchanged; there are no loader/update-routine changes.
+
+Public tests pass 40 JavaScript and 11 Python cases. The actual save policy is
+host-tested under ASan/UBSan for busy notes/MIDI, complete silent halves before
+flash access, frame-counter wrap, stopped-audio timeout, deferred long release,
+failed-save retries, uncertain commits and no repeated saves after success.
+A DSP regression retriggers five notes with one-/four-second releases and checks
+20 seconds of exact silence afterward. Original-dump integration, OTA/loader
+checks and zero/A5/FF SRAM startup tests pass. No physical FM-1 was flashed or
+recorded for this fix.
+
+The final app is 566,176 bytes; template SHA-256:
+`1e8af2f71e8db24edb2ce7fdfbd3a7d226659d324b9c33cae7a016b5c3ac7e53`.

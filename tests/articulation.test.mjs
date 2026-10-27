@@ -35,3 +35,13 @@ test('all panel actions and four ADSR knobs act live without advancing the lyric
  for(let i=0;i<4;i++){e.nsx_adsr_knob(i,1000);assert.equal(state(e)[i],i===2?100:i===3?4000:2000);e.nsx_adsr_knob(i,-1000);assert.equal(state(e)[i],0);}
  e.nsx_note_on(65,127);e.nsx_panel_button(9);assert.equal(e.nsx_active(),0);
 });
+test('retriggered long release reaches exact silence and stays silent while idle',{skip:!built},async()=>{
+ for(const release of[1000,4000]){
+  const e=await engine();e.nsx_adsr(0,80);e.nsx_adsr(1,60);e.nsx_adsr(2,65);e.nsx_adsr(3,release);
+  for(const note of[60,64,67,72,69]){e.nsx_note_on(note,127);render(e,20);e.nsx_note_off(note);render(e,6);}
+  render(e,Math.ceil(release*22050/1000/128)+4);assert.equal(e.nsx_active(),0);assert.equal(state(e)[4],0);assert.equal(state(e)[5],0);
+  const pcm=new Int16Array(e.memory.buffer,e.web_audio_ptr(),128);
+  // Twenty seconds covers repeated idle-save intervals as well as stale tails.
+  for(let k=0;k<Math.ceil(20*22050/128);k++){e.web_render();assert(pcm.every(s=>s===0),'audio returned after the release ended');}
+ }
+});

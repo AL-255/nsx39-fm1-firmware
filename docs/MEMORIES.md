@@ -1,4 +1,4 @@
-# Lyric memories and permanent settings (FM-1_944)
+# Lyric memories and permanent settings (FM-1_945)
 
 The webpage has three independent tabs: **Firmware**, **Lyric memories**, and
 **Device settings**. The two device editors use USB-MIDI SysEx; neither loads
@@ -57,6 +57,13 @@ change, once the keys/voice are idle. Active notes, lyric playback position,
 last-played text, pitch bend and the physical MASTER position are not restored
 as sounding performance state. This avoids writing flash on every played note.
 The settings screen reports pending, saved or failed/occupied storage.
+
+FM-1_945 keeps I2S/DMA running during saves. Once the voice is idle, it lets the
+audio interrupt fill both DMA halves with silence before touching flash. That
+silent ring can repeat autonomously while the RAM driver masks interrupts. A
+20 ms timeout defers the save if audio stops advancing; it never forces a codec
+restart. Failed saves can therefore retry without cycling the audio clock.
+This also applies to saves requested by the MIDI editors.
 
 The journal uses only `0xE5000–0xE7000`, the two autosave sectors documented by
 Felucca, immediately above OTA staging `0xE0000–0xE5000`. The original loader,
