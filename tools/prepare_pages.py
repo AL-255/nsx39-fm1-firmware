@@ -11,7 +11,7 @@ template=(R/'build/template.fwsc').read_bytes()
 if hashlib.sha256(template).hexdigest()!=manifest['templateSha256']:raise SystemExit('Template hash mismatch')
 # Prove the compiled reserve is empty using the package parser in a separate test.
 out.mkdir(parents=True,exist_ok=True)
-for rel in ['index.html','style.css','app.js','worker.js','voice-worklet.js','syllables.json','lib/bank.js','lib/generator.js','lib/fm1pkg.js','lib/fm1ota.js','lib/install-progress.js']:
+for rel in ['index.html','style.css','app.js','worker.js','voice-worklet.js','syllables.json','lib/bank.js','lib/generator.js','lib/fm1pkg.js','lib/fm1ota.js','lib/install-progress.js','lib/memory.js','lib/device-memory.js']:
  (out/rel).parent.mkdir(parents=True,exist_ok=True)
  shutil.copyfile(R/'web'/rel,out/rel)
 # Version UI imports and entry points to avoid mixing cached protocol callbacks

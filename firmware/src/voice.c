@@ -175,6 +175,7 @@ int nsx_init(const uint8_t *bank,size_t size){
  bank_ok=0;if(!bank||size<64||bank[0]!='N'||bank[1]!='S'||bank[2]!='X'||bank[3]!='V'||r32(bank+4)!=2)return 0;
  vb=bank;vb_size=r32(vb+8);if(vb_size>size||vb_size>NSX_BANK_CAPACITY||vb_size<64||r32(vb+16)!=449||r32(vb+20)>64||!r32(vb+20)||r32(vb+36)!=22050||r32(vb+40)!=128||r32(vb+44)!=68||bank_crc(vb,vb_size)!=r32(vb+12))return 0;
  // v2 carries the user's original 16 x 64-byte factory lyric table.
+ if((r32(vb+56)||r32(vb+60))&&(r32(vb+60)!=1120||r32(vb+56)<64||!bound(r32(vb+56),1120)))return 0;
  if(r32(vb+48)||r32(vb+52)){
   if(r32(vb+52)!=1024||r32(vb+48)<64||!bound(r32(vb+48),1024))return 0;
   for(unsigned b=0;b<16;b++){const uint8_t*p=vb+r32(vb+48)+64*b;unsigned n=0;while(n<64&&p[n]<128)n++;if(!n||n==64)return 0;for(;n<64;n++)if(p[n]!=0x80)return 0;}
@@ -192,6 +193,7 @@ int nsx_init(const uint8_t *bank,size_t size){
 }
 
 const uint8_t *nsx_factory_lyrics(void){return bank_ok&&r32(vb+52)==1024?vb+r32(vb+48):0;}
+const uint8_t *nsx_seed_state(unsigned *size){*size=bank_ok?r32(vb+60):0;return *size?vb+r32(vb+56):0;}
 int32_t nsx_vibrato_q16(void){return articulation_vibrato_q16;}
 
 void nsx_articulation(unsigned parameter,unsigned value){

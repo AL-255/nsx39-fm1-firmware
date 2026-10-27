@@ -5,6 +5,7 @@
 static uint8_t glyph_mask[48*48];
 const char *ui_syllable(unsigned id,unsigned script){return syllable_labels[id&127u][script%3];}
 static unsigned utf8_next(const char **p){const uint8_t*s=(const uint8_t*)*p;unsigned c=*s++;if(c>=0xe0){c=((c&15)<<12)|((s[0]&63)<<6)|(s[1]&63);s+=2;}else if(c>=0xc0){c=((c&31)<<6)|(s[0]&63);s++;}*p=(const char*)s;return c;}
+unsigned ui_label_width(const char*text,unsigned divisor){unsigned width=0;while(*text){unsigned c=utf8_next(&text);for(unsigned i=0;i<sizeof label_glyphs/sizeof label_glyphs[0];i++)if(label_glyphs[i].codepoint==c){width+=label_glyphs[i].advance/divisor;break;}}return width;}
 static uint16_t label_blend(uint16_t fg,unsigned q){unsigned bg=0x0841;return (uint16_t)(((((fg>>11)*q+(bg>>11)*(3-q))/3)<<11)|(((((fg>>5)&63)*q+((bg>>5)&63)*(3-q))/3)<<5)|(((fg&31)*q+(bg&31)*(3-q))/3));}
 void ui_label(uint16_t*canvas,int x,int baseline,const char*text,unsigned divisor,uint16_t color){
  uint16_t colors[4];for(unsigned i=0;i<4;i++)colors[i]=label_blend(color,i);

@@ -1,6 +1,6 @@
 # Firmware-update safety
 
-Hardware installation is enabled for candidate `FM-1_942`, which retains the
+Hardware installation is enabled for candidate `FM-1_943`, which retains the
 retained-SRAM boot-marker fix and adds articulation controls and ADSR. The earlier `FM-1_939` failed to boot.
 RAM-only recovery succeeded, returning the unit to its existing `FM-1_939`; the user later reported a working
 `FM-1_941` installation. On 2026-10-26, the agent installed `FM-1_942` on the
@@ -19,8 +19,9 @@ phase-specific finish addresses and refusal of zero-length/out-of-bounds reads.
 |---|---|
 | `0x000000–0x004000` | Existing SPL/flash head/identity: loader never erases or writes |
 | `0x004000–0x093000` | Application area: written only by the RAM loader |
-| `0x093000–0x100000` | Existing data preserved except recognized update records |
-| `0x0e0000–0x0e5000` | Running application's only write window: OTA loader staging |
+| `0x093000–0x100000` | Loader preserves data except recognized update records |
+| `0x0e0000–0x0e5000` | Running application's OTA loader staging |
+| `0x0e5000–0x0e7000` | Separate NSX39 settings journal; refuses unfamiliar data |
 | `0x0e4f00` | Staged update record, committed after verification and host finish |
 | `0x0e8f00` | Stock update-record position, cleared by loader after successful install |
 
@@ -30,6 +31,8 @@ CRC is checked before erase; each sector is checked against that preflight befor
 writing, read back after writing, and skipped when already equal. The update
 record remains available to resume after power loss until installation completes.
 The loader only clears known valid update records, preserving neighboring user data.
+FM-1_943's settings journal is separate from OTA staging and leaves each sector's
+last 256 bytes erased. See [the journal format and checks](MEMORIES.md).
 
 The app rejects unknown flash JEDEC IDs at update entry (tested ID `0x856014`).
 It halts a possibly inherited second core before touching shared boot RAM, uses
@@ -99,10 +102,10 @@ password in chat. The user successfully ran this recovery; the existing
 ## Controlled candidate preflight
 
 `tools/install_candidate.py` validates a locally generated candidate's SHA-256,
-checks its product is `FM-1_942`, and queries the connected FM-1 identity. It uses
+checks its product is `FM-1_943`, and queries the connected FM-1 identity. It uses
 the vendored GPL Felucca installer with stricter request/completion gates and the
 existing Python RtMidi backend. The default sends no update command. The current
-identity must equal `--expected-current` (default `FM-1_941`). `--apply` starts the
+identity must equal `--expected-current` (default `FM-1_942`). `--apply` starts the
 actual two-stage flash update and must be an explicit hardware-test decision.
 The NSX39 MIDI device is not an install target. The public page allows explicit
 installation of the fixed candidate after generation and acknowledgement;

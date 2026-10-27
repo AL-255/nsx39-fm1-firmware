@@ -4,7 +4,8 @@ The four numbered knobs control a new amplitude ADSR: A/D 0–2,000 ms, S 0–10
 R 0–4,000 ms. Defaults are 0 ms / 0 ms / 100% / 100 ms. The encoders use a
 quadratic time scale for finer control at short times. Changing an active stage
 retargets the envelope from its current level. A zero release stops immediately;
-SAVE always stops immediately. Settings remain in RAM.
+SAVE always stops immediately. FM-1_943 saves settings in its separate journal
+when idle; see [memories and settings](MEMORIES.md).
 
 The largest label remains the last played syllable, with the upcoming syllable
 below. The ADSR graph highlights the active segment and shows the actual envelope

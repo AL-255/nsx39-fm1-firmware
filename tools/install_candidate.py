@@ -65,10 +65,10 @@ def validate_candidate(path,sha):
  raw=path.read_bytes()
  if not re.fullmatch('[0-9a-f]{64}',sha) or hashlib.sha256(raw).hexdigest()!=sha:raise ValueError('Candidate SHA-256 mismatch')
  product,image=I.load_package(str(path),False)
- if product!='FM-1_942':raise ValueError('Only fixed candidate FM-1_942 is accepted')
+ if product!='FM-1_943':raise ValueError('Only fixed candidate FM-1_943 is accepted')
  return product,image
 def main():
- ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('package',type=Path);ap.add_argument('--sha256',required=True);ap.add_argument('--expected-current',default='FM-1_941');ap.add_argument('--apply',action='store_true');a=ap.parse_args()
+ ap=argparse.ArgumentParser(description=__doc__);ap.add_argument('package',type=Path);ap.add_argument('--sha256',required=True);ap.add_argument('--expected-current',default='FM-1_942');ap.add_argument('--apply',action='store_true');a=ap.parse_args()
  product,image=validate_candidate(a.package,a.sha256.lower());up=CheckedUpdater(RtMidiBackend());dev=up.find()
  if not dev:raise SystemExit('No FM-1 identity reply. Close other MIDI/installer applications and retry preflight only.')
  print('Connected:',dev.id.text,'on',dev.name,flush=True);print('Candidate:',product,'SHA-256',a.sha256,flush=True)

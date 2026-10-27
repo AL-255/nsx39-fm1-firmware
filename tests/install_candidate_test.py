@@ -36,6 +36,6 @@ class CandidateTests(unittest.TestCase):
  def test_candidate_hash_and_product(self):
   p=R/'build/template.fwsc'
   if not p.exists():self.skipTest('Build the blank candidate first')
-  digest=hashlib.sha256(p.read_bytes()).hexdigest();self.assertEqual(C.validate_candidate(p,digest)[0],'FM-1_942')
+  digest=hashlib.sha256(p.read_bytes()).hexdigest();self.assertEqual(C.validate_candidate(p,digest)[0],'FM-1_943')
   with self.assertRaises(ValueError):C.validate_candidate(p,'0'*64)
 if __name__=='__main__':unittest.main()

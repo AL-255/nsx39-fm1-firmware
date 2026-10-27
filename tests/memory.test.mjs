@@ -1,0 +1,38 @@
+// SPDX-License-Identifier: GPL-3.0-only
+import test from 'node:test';import assert from 'node:assert/strict';import{readFile}from'node:fs/promises';import{execFileSync}from'node:child_process';
+import{encodeMemory,decodeMemory,parseLyrics,lyricArrays,DEFAULT_VALUES,loadMemory,saveMemory}from'../web/lib/memory.js';
+import{DeviceMemory,memoryPacket,memoryResponse}from'../web/lib/device-memory.js';
+import{pack7}from'../web/lib/fm1ota.js';import{fakeLyrics,synthetic}from'./fixture.mjs';
+import{crc32}from'../web/lib/bank.js';
+const config=()=>({values:[...DEFAULT_VALUES],lyrics:lyricArrays(fakeLyrics())});
+test('kana, katakana, romaji and exact IDs produce the same bounded lyric sequence',async()=>{
+ const labels=JSON.parse(await readFile('web/syllables.json'));
+ for(const text of ['はつねみく','ハツネミク','ha tsu ne mi ku','hatsunemiku','は、つ。ね みく'])assert.deepEqual(parseLyrics(text,labels),[71,60,66,101,7]);
+ assert.deepEqual(parseLyrics('#124 #127',labels),[124,127]);for(const text of ['', 'hello!', '#128','あ'.repeat(64)])assert.throws(()=>parseLyrics(text,labels));
+});
+test('configuration round-trips through browser storage and C, rejects corruption and preserves lyric position',async()=>{
+ const c=config();c.values[0]=250;c.values[16]=2;c.values[17]=0;c.lyrics[6]=[5,6,7,8];const b=encodeMemory(c);assert.deepEqual(decodeMemory(b),c);
+ const storage={getItem(){return this.value},setItem(k,v){this.value=v}};saveMemory(storage,c);assert.deepEqual(loadMemory(storage),c);const bad=b.slice();bad[102]^=1;assert.throws(()=>decodeMemory(bad),/checksum/);
+ const{instance}=await WebAssembly.instantiate(await readFile('build/voice-engine.wasm'),{}),e=instance.exports,bank=synthetic(fakeLyrics());new Uint8Array(e.memory.buffer,e.web_bank_ptr(),bank.length).set(bank);assert.equal(e.web_init(),1);assert.equal(e.instrument_octave(),0);
+ new Uint8Array(e.memory.buffer,e.web_state_ptr(),1120).set(b);assert.equal(e.web_state_apply(),1);assert.equal(e.instrument_script(),2);e.performance_mode(6);e.performance_trigger(53,127);assert.equal(e.web_next(),6);
+ const current=decodeMemory(new Uint8Array(e.memory.buffer,e.web_state_ptr(),1120));current.values[1]=400;new Uint8Array(e.memory.buffer,e.web_state_ptr(),1120).set(encodeMemory(current));assert.equal(e.web_state_apply(),1);assert.equal(e.web_next(),6);
+ assert.deepEqual(decodeMemory(new Uint8Array(e.memory.buffer,e.web_state_ptr(),1120)),current);
+});
+test('flash journal survives byte-level power interruptions without touching updater or unknown data',()=>{
+ execFileSync('cc',['-O1','-g','-fsanitize=address,undefined','-Ifirmware/include','-Ibuild/gen','tests/persistence.c','-o','build/persistence_test']);console.log(execFileSync('build/persistence_test',{encoding:'utf8',env:{...process.env,UBSAN_OPTIONS:'halt_on_error=1'}}).trim());
+});
+test('generated settings seed is applied at startup while original lyrics remain available for reset',async()=>{
+ const c=config();c.lyrics[6]=[71,60,66,101,7];c.values[0]=350;c.values[14]=6;c.values[16]=2;
+ const bank=synthetic(fakeLyrics(),encodeMemory(c)),{instance}=await WebAssembly.instantiate(await readFile('build/voice-engine.wasm'),{}),e=instance.exports;
+ const target=new Uint8Array(e.memory.buffer,e.web_bank_ptr(),bank.length);target.set(bank);assert.equal(e.web_init(),1);assert.equal(e.web_next(),71);assert.equal(e.instrument_value(4),350);assert.equal(e.instrument_script(),2);
+ e.performance_trigger(53,127);assert.equal(e.web_next(),60);e.instrument_defaults();assert.equal(e.instrument_value(4),0);e.performance_mode(6);assert.equal(e.web_next(),30);
+ const v=new DataView(bank.buffer),offset=v.getUint32(56,true);bank[offset+100]^=1;v.setUint32(12,0,true);v.setUint32(12,crc32(bank.subarray(0,v.getUint32(8,true))),true);target.set(bank);assert.equal(e.web_init(),0);
+});
+test('memory SysEx validates routing, checksums, complete transfer, durable acknowledgement and readback',async()=>{
+ const c=config();let stored=encodeMemory(c),staged=new Uint8Array(1120),mask=0,q=[];const link={send(packet){const p=packet.slice(1,-1),cmd=p[5],id=p[6],chunk=p[7];let data;
+  if(cmd===1)data=[chunk,...pack7(stored.slice(chunk*128,Math.min(1120,(chunk+1)*128)))];
+  if(cmd===2){const bits=p.slice(8,-1);let acc=0,n=0,out=[];for(const b of bits){acc|=b<<n;n+=7;while(n>=8){out.push(acc&255);acc>>>=8;n-=8;}}staged.set(out,chunk*128);mask|=1<<chunk;data=[0];}
+  if(cmd===3){assert.equal(mask,511);decodeMemory(staged);stored=staged.slice();data=[0];}q.push(memoryPacket(cmd|64,id,data));return true;},async read(){return q.shift();},close(){}};
+ const device=new DeviceMemory({link});assert.deepEqual(await device.read(),c);c.lyrics[3]=[1,2,3];assert.deepEqual(await device.write(c),c);
+ const packet=memoryPacket(65,7,[0,1,2]);assert.deepEqual(memoryResponse(packet,1,7),[0,1,2]);packet[8]^=1;assert.equal(memoryResponse(packet,1,7),null);
+});

@@ -9,10 +9,10 @@ Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 
 **Experimental hardware installation:** the retained-SRAM startup bug in
 `FM-1_939` was fixed in `FM-1_941`; the user subsequently reported a working
-installation. Current `FM-1_942` adds articulation controls and ADSR. It retains
-the startup fix. Installation and automatic restart were verified on a physical
-FM-1 using both native USB-MIDI and the live Pages generator on 2026-10-26.
-Physical sound/display checks and cold-boot validation remain pending.
+installation. `FM-1_942` installation and automatic restart were verified on a
+physical FM-1 using native USB-MIDI and the live Pages generator on 2026-10-26.
+Current `FM-1_943` adds editable lyrics, persistent settings and a larger display.
+It retains the startup fix; physical validation of this new build remains pending.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
 port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
 persistence compatibility remains unfinished. Do not mistake bank coverage for
@@ -42,13 +42,14 @@ On the FM-1:
 | SELECT encoder | Manual: pronunciation 0–127, wrapping. Lyric: left restarts, right reserved |
 | PRESETS encoder | Cycle hiragana, katakana and romaji labels |
 | 27 keys | Monophonic trigger/pitch; each new key press advances one lyric syllable |
-| OCT− / OCT+ | Three registers: MIDI 53–79, 65–91 (default), 77–103 |
+| OCT− / OCT+ | Three registers: MIDI 53–79 (default OCT0), 65–91, 77–103 |
+| Both OCT buttons, short press | Toggle settings; knob 1 selects an item, knob 2 changes it |
 | Knobs 1–4 | Attack / decay / sustain / release; live amplitude envelope |
 | LFO / EDIT / GLO / HOME / REC | Vibrato on/off / type / rate / delay / depth |
 | SCL / ENV | Automatic pitch / automatic dynamics switches (native approximations) |
 | FX / ARP / SEQ / PLAY | Recorded-noise level / connection timing / glide / sustain hold |
 | MASTER | Output level |
-| SAVE | Panic / all sound off (does not save to flash) |
+| SAVE | Panic / all sound off |
 | Both OCT buttons, held 5 s | Enter UBOOT for recovery |
 | USB MIDI and TRS MIDI | Vocal channel 1 note/velocity/CC/bend |
 
@@ -57,8 +58,9 @@ rewind, or a selection change. The **next** syllable appears below in smaller ty
 PRESETS changes both labels using a 40-pixel antialiased Noto Sans CJK JP font
 (20 pixels for the upcoming syllable). The display shows current articulation
 settings and an ADSR diagram with its active segment and live level cursor, beside
-a 4.6 ms waveform window. MIDI note, octave, maximum render time and late-buffer
-count remain visible. [Articulation controls and fidelity](docs/ARTICULATION.md)
+a 4.6 ms waveform window with automatic vertical scaling. Last played and the
+smaller upcoming sequence share a row. Diagnostic type is larger, and the
+bottom knob/render-time legend is removed. [Articulation controls and fidelity](docs/ARTICULATION.md)
 describes the exact mappings and the remaining original-behavior gaps.
 
 Each factory bank loops at its original return marker. Banks 1–5 are single-vowel
@@ -67,7 +69,10 @@ user slots. Selecting a bank or turning SELECT left resets its next syllable;
 neither triggers sound or changes the last played label. Returning to manual mode
 restores its previous SELECT choice. Releasing a key while another remains held
 changes pitch without advancing the lyric. USB/TRS channel-1 note-on also advances;
-note-off and zero-velocity note-on do not. Settings stay in RAM.
+note-off and zero-velocity note-on do not. Memories and parameters are saved
+when idle and restored after power-off. The webpage accepts kana/romaji lyrics,
+remembers edits locally, includes them in generated firmware and can read/save
+memories on FM-1_943 without reflashing. See [memories and settings](docs/MEMORIES.md).
 
 ## No proprietary data in this repository or its Pages deployment
 
@@ -82,13 +87,13 @@ and the 1,024-byte original factory lyric table.
 The 36 tiny sustained cycles stay **lossless PCM16**; 413 transitions use standard
 IMA ADPCM in independently seeded **128-sample blocks**, 68 bytes each. This is
 lossy for transitions. The tested bank occupies **483,052 bytes** of a 491,520-byte
-reserve. Aggregate codec SNR against exact decoded input is **24.61 dB**; that
+reserve, plus a 1,120-byte settings seed. Aggregate codec SNR against exact decoded input is **24.61 dB**; that
 measures the codec, not fidelity to the complete original synthesizer.
 
 The native renderer decodes a transition when it is selected into one of two
 bounded 8,192-sample buffers. No heap or unbounded decoding runs in the audio path.
-The firmware uses about **48 KB normal RAM**, **118 KB buffer pool**, and a
-**560 KB app image**, inside the fixed 581,564-byte app slot. Audio renders at
+The firmware uses about **55 KB normal RAM**, **118 KB buffer pool**, and a
+**566 KB app image**, inside the fixed 581,564-byte app slot. Audio renders at
 22,050 Hz and is interpolated to the FM-1's approximately 44.1 kHz output.
 
 Published artifacts contain only our compiled code, an **empty voice reserve**,
@@ -130,7 +135,8 @@ The two-stage updater and RAM-resident loader are reused from
 [Felucca](https://github.com/hugelton/Felucca). The loader verifies layout, chip key,
 whole-package CRC and sector consistency before replacing the application;
 it preserves flash `[0,0x4000)` and verifies written sectors. The application
-can write only the five OTA staging sectors. No NSX39 command can write flash.
+can write only the five OTA staging sectors and two separate settings-journal
+sectors. No NSX39 firmware-update command is forwarded to flash.
 A failed or interrupted transfer must be resumed with the **same generated
 package**. Read [update safety](docs/UPDATES.md) before hardware tests.
 

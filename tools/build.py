@@ -23,12 +23,12 @@ run([sys.executable,'tools/gen_label_font.py'])
 # Rasterize a redistributable font from the OS; shipped as source data with notice.
 font=Path('/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf')
 from PIL import Image,ImageFont,ImageDraw
-f=ImageFont.truetype(str(font),8)
+f=ImageFont.truetype(str(font),12)
 rows=[]
 for c in range(32,128):
- im=Image.new('1',(6,8));ImageDraw.Draw(im).text((0,-2),chr(c),font=f,fill=1)
- rows.append([sum((1<<x) for x in range(6) if im.getpixel((x,y))) for y in range(8)])
-(OUT/'gen/ui_font.h').write_text('// DejaVu Sans Mono rasterization. See vendor/DejaVu-LICENSE.txt\nconst uint8_t ui_font[96][8]={'+','.join('{'+','.join(map(str,r))+'}' for r in rows)+'};\n')
+ im=Image.new('1',(8,14));ImageDraw.Draw(im).text((0,-2),chr(c),font=f,fill=1)
+ rows.append([sum((1<<x) for x in range(8) if im.getpixel((x,y))) for y in range(14)])
+(OUT/'gen/ui_font.h').write_text('// DejaVu Sans Mono rasterization. See vendor/DejaVu-LICENSE.txt\nconst uint8_t ui_font[96][14]={'+','.join('{'+','.join(map(str,r))+'}' for r in rows)+'};\n')
 # Validate every SDK component, not merely its filename.
 for rel,want in {'uboot.boot':'4e3b4c220dc96641cb5a723f41e68ce41d5261ae9434bb33fbd7f2c59976ded4','cfg_tool.bin':'276579954f076886a6a7694f65dc71c034a63a2c204b76749065c0ac7b010d1b','cfg/eq_cfg_hw.bin':'41167491bffed4651750719c973d2758adeb9021a5670d02d6a53c85ed80ea7d'}.items():
  p=SDK/'cpu/wl82/tools'/rel
@@ -77,9 +77,9 @@ body=head(pkg.crc16(raw),len(raw),0x01c0a800,0,b'usb_hid_ota.bin')+blocks
 ota=head(pkg.crc16(body),32,len(body),0x41,b'usb_hid_ota.bin')+body
 (ldr/'ota.bin').write_bytes(ota)
 pkg.SDK=SDK
-template=pkg.ufw(pkg.flash_image(app,pkg.KEY),ota,'FM-1_942')
+template=pkg.ufw(pkg.flash_image(app,pkg.KEY),ota,'FM-1_943')
 (OUT/'template.fwsc').write_bytes(template)
-manifest={'format':1,'product':'FM-1_942','version':'0.3.0-debug','bankOffset':bank_offset,'bankCapacity':0x78000,'appBytes':len(app),'templateSha256':hashlib.sha256(template).hexdigest(),'hardwareValidated':False,'compatibility':'experimental-native-vocals','loaderSource':'hugelton/Felucca@440e62ce8a33d9bb285ab6bbca9a0fd50e459648','ramBytes':sym('_bss_end')-0x1c08000,'poolBytes':sym('_pool_end')-sym('_pool_start')}
+manifest={'format':1,'product':'FM-1_943','version':'0.4.0-debug','bankOffset':bank_offset,'bankCapacity':0x78000,'appBytes':len(app),'templateSha256':hashlib.sha256(template).hexdigest(),'hardwareValidated':False,'compatibility':'experimental-native-vocals','loaderSource':'hugelton/Felucca@440e62ce8a33d9bb285ab6bbca9a0fd50e459648','ramBytes':sym('_bss_end')-0x1c08000,'poolBytes':sym('_pool_end')-sym('_pool_start')}
 if manifest['ramBytes']>72*1024-4096:sys.exit('Insufficient RAM headroom')
 (OUT/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 print(json.dumps(manifest,indent=2))

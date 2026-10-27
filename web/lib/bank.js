@@ -100,7 +100,7 @@ export function validateFactoryLyrics(bytes) {
     if(!end||end===64||bytes.subarray(bank*64+end,(bank+1)*64).some(x=>x!==0x80))throw Error('Unsupported factory lyric return marker');
   }
 }
-export function packBank({units,pronunciations,curves,factoryLyrics}) {
+export function packBank({units,pronunciations,curves,factoryLyrics,seed}) {
   const bytes=new Uint8Array(CAPACITY),v=new DataView(bytes.buffer),w16=(o,x)=>v.setUint16(o,x,true),w32=(o,x)=>v.setUint32(o,x>>>0,true);
   const names=[...new Set(units.flatMap(u=>[u.source,u.target]).filter(Boolean))];
   let p=64+units.length*40;const nameOff=p;
@@ -120,6 +120,7 @@ export function packBank({units,pronunciations,curves,factoryLyrics}) {
     for(const x of u.pitch){w32(p,x);p+=4;}for(const x of u.stretch){w32(p,x);p+=4;}
   }
   if(factoryLyrics){validateFactoryLyrics(factoryLyrics);p=(p+3)&~3;w32(48,p);w32(52,1024);bytes.set(factoryLyrics,p);p+=1024;}
+  if(seed){if(seed.length!==1120)throw Error('Invalid settings seed size');p=(p+3)&~3;w32(56,p);w32(60,seed.length);bytes.set(seed,p);p+=seed.length;}
   if(p>CAPACITY)throw Error(`Voice bank ${p} exceeds the ${CAPACITY}-byte slot`);
   bytes.set(new TextEncoder().encode('NSXV'),0);w32(4,2);w32(8,p);w32(16,units.length);w32(20,names.length);w32(24,nameOff);w32(28,pronOff);w32(32,curveOff);w32(36,22050);w32(40,128);w32(44,68);
   w32(12,crc32(bytes.subarray(0,p)));

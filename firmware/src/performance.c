@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Musical panel/preview state. Never writes flash and never changes voice data.
 #include "performance.h"
+static uint8_t memories[1024];
 static const uint8_t *factory;
 static unsigned lengths[16],mode,cursor,manual,last,has_last;
 void performance_init(const uint8_t *data){
- factory=data;mode=cursor=manual=last=has_last=0;
- for(unsigned b=0;b<16;b++){lengths[b]=0;if(data)while(lengths[b]<64&&data[b*64+lengths[b]]<128)lengths[b]++;}
+ mode=cursor=manual=last=has_last=0;
+ for(unsigned i=0;i<1024;i++)memories[i]=data?data[i]:((i%64)?128:0);
+ factory=memories;
+ for(unsigned b=0;b<16;b++){lengths[b]=0;while(lengths[b]<64&&memories[b*64+lengths[b]]<128)lengths[b]++;}
 }
 void performance_mode(unsigned m){mode=factory?(m&15u):0;cursor=0;if(!mode)nsx_select(manual);}
 void performance_rotate(int delta){performance_mode((unsigned)((int)mode+delta));}
@@ -15,6 +18,16 @@ void performance_select(int delta){
  else if(delta<0)cursor=0; // Right is intentionally reserved; no retrigger.
 }
 static unsigned upcoming(void){return mode?factory[mode*64+cursor]:manual;}
+unsigned performance_upcoming(unsigned offset){return mode?factory[mode*64+(cursor+offset)%lengths[mode]]:manual;}
+const uint8_t *performance_lyrics(void){return memories;}
+unsigned performance_manual_value(void){return manual;}
+int performance_set_lyrics(const uint8_t *table){
+ for(unsigned b=0;b<16;b++){unsigned n=0;while(n<64&&table[b*64+n]<128)n++;if(!n||n==64)return 0;for(unsigned j=n;j<64;j++)if(table[b*64+j]!=128)return 0;}
+ unsigned changed=0;for(unsigned i=0;i<64;i++)if(memories[mode*64+i]!=table[mode*64+i])changed=1;
+ for(unsigned i=0;i<1024;i++)memories[i]=table[i];
+ for(unsigned b=0;b<16;b++){lengths[b]=0;while(memories[b*64+lengths[b]]<128)lengths[b]++;}
+ if(changed)cursor=0;return 1;
+}
 void performance_trigger(uint8_t note,uint8_t velocity){
  if(!velocity){nsx_note_off(note);return;}
  unsigned syllable=upcoming();nsx_sequence(0);nsx_select(syllable);nsx_note_on(note,velocity);

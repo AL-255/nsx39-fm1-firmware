@@ -71,6 +71,7 @@ static void articulation_vibrato_tick(unsigned enabled,unsigned type,unsigned ra
 }
 void nsx_adsr(unsigned parameter,unsigned value){
  if(parameter>3)return;unsigned max=parameter==2?100:parameter==3?4000:2000;if(value>max)value=max;adsr_ms[parameter]=value;
+ if(parameter==2)adsr_knobs[parameter]=(value*127u+50u)/100u;else{unsigned k=0;while(k<127&&k*k*max/(127u*127u)<value)k++;adsr_knobs[parameter]=k;}
  if(parameter==0&&envelope.stage==NSX_ENV_ATTACK)envelope_begin(NSX_ENV_ATTACK,32768,value*NSX_RATE/1000u);
  if(parameter==1&&envelope.stage==NSX_ENV_DECAY)envelope_begin(NSX_ENV_DECAY,adsr_ms[2]*32768u/100u,value*NSX_RATE/1000u);
  if(parameter==2&&(envelope.stage==NSX_ENV_DECAY||envelope.stage==NSX_ENV_SUSTAIN))envelope_begin(NSX_ENV_DECAY,value*32768u/100u,128);
@@ -83,4 +84,5 @@ void nsx_adsr(unsigned parameter,unsigned value){
 void nsx_adsr_knob(unsigned parameter,int delta){
  if(parameter>3)return;unsigned value=(unsigned)clip((int)adsr_knobs[parameter]+delta,0,127);adsr_knobs[parameter]=value;
  nsx_adsr(parameter,parameter==2?(value*100u+63)/127u:value*value*(parameter==3?4000u:2000u)/(127u*127u));
+ adsr_knobs[parameter]=value;
 }

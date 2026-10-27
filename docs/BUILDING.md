@@ -49,6 +49,10 @@ zero during calculation), 449 40-byte descriptors, names, pronunciation strings,
 four curves, PCM steady cycles and IMA transition blocks. Header words at offsets
 48/52 hold the factory lyric offset/size (both zero when absent in synthetic tests).
 The extracted 1,024 bytes at dump offset `0x1de40` contain 16 banks of 64 bytes.
+Header words 56/60 optionally point to the 1,120-byte initial settings/memory
+record, with its own CRC and range checks. The original table is retained even
+when generated memories are edited. Runtime state and its separate flash journal
+are documented in [MEMORIES.md](MEMORIES.md).
 IDs below 128 are syllables; `0x80` returns to the beginning. Every bank must have
 at least one syllable followed only by `0x80` padding. Other command tokens are
 rejected for this supported dump revision. Mode 0 replaces source bank 0 with the

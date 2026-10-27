@@ -196,3 +196,48 @@ Public regressions cover a settling MIDI transport, repeated discovery, port-ope
 failure and preserving failed-resume errors. The application and RAM loader
 binary are unchanged by this browser fix. Full physical audio/display and
 power-cycle checks are still separate from successful update/restart identity.
+
+## Editable memories, settings and retained flash (FM-1_943)
+
+Public tests now cover kana/katakana/romaji parsing, the 63-syllable limit,
+browser storage, settings CRC/range validation, applying an embedded settings
+seed at startup, preserving lyric position during parameter changes, and reset
+to the original factory table. C/WASM state records round-trip identically.
+The private genuine-dump integration also repackages an edited memory, checks
+the resulting app bank, and boots that bank through the shared WASM controller.
+
+The native C journal tests simulate 2,574 first-save/program/rollover cut points,
+each followed by a restart and a further successful save, plus duplicate-save suppression, CRC
+rejection, foreign/future-format protection and generated-seed precedence.
+Commit-read failures are injected too: retries receive unique sequence numbers,
+and an uncertain commit cannot be incorrectly skipped as an unchanged save.
+They assert that writes stay inside `0xE5000–0xE7000` and that the prior committed
+record survives an interrupted replacement. AddressSanitizer and UBSan are
+enabled. The actual firmware memory-SysEx handler is exercised against synthetic
+flash, including chunk reads, missing/invalid payloads, busy-key refusal,
+durable commit and restart restoration. Browser protocol framing/readback is
+also tested with an independent fake peer.
+
+The real generated pi32v2 application was run in the pinned emulator with OCT
+chords, knob navigation, parameter changes, lyric playback and all label scripts.
+The 4,500 ms session wrote a committed journal record containing attack 200 ms,
+memory 6, romaji and OCT0. Its raw sector contents were carried into a fresh
+emulator process; the new process restored those values, confirmed by both a
+RAM read of the ADSR and a settings-screen capture. A second settings-page turn
+confirmed reset, producing a newer committed record with all original lyric
+memories and default parameters. Screen captures cover reset arming, confirmation
+and the final Saved state. No physical device was flashed for this change.
+
+For retained-flash tests, use a populated `--bin`, its matching decrypted
+`--flash`, and the retained `--raw-flash`. In the pinned emulator, `--fwsc` calls
+`stock_boot` after loading `--raw-flash`, replacing its retained contents with
+the package's flash. That combination therefore does not model a power cycle
+with saved settings.
+
+Chrome testing in an isolated headless profile covered generating from the local
+dump, editing a memory using kana, an updated download hash, playback of that
+edited memory, multiple upcoming syllables, remembered ADSR values and restoring
+the editor after reload. The native 240×240 layout and the webpage were visually
+inspected. Firmware data stays in ignored local files. Physical persistence,
+new memory-protocol writes and this build's audio/display behavior remain pending
+hardware validation; the prior FM-1_942 installation result is not extended to 943.
