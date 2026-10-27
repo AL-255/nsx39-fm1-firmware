@@ -11,8 +11,10 @@ Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
 `FM-1_939` was fixed in `FM-1_941`; the user subsequently reported a working
 installation. `FM-1_942` installation and automatic restart were verified on a
 physical FM-1 using native USB-MIDI and the live Pages generator on 2026-10-26.
-Current `FM-1_946` saves once after a settled parameter change, with no periodic
-retry on failure. It retains the fix for audio-clock interruptions during saves. DoReMi, all sixteen lyric
+Current `FM-1_947` adds a backed-up initialization flow for occupied settings
+storage. It retains one save attempt per settled parameter change and keeps
+audio running silently during saves. Installation and a 56-syllable slot-00
+write/readback were verified on a physical FM-1. DoReMi, all sixteen lyric
 slots, and the separate MIDI editors remain available.
 It retains the startup fix; physical validation of this new build remains pending.
 This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact

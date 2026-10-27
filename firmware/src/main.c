@@ -4,7 +4,7 @@
 #define FELUCCA_OTA 1
 #define FELUCCA_CDC 0
 #define FELUCCA_UAC 0
-#define FELUCCA_ID "FM-1_946"
+#define FELUCCA_ID "FM-1_947"
 // Miku cyan #39C5BB, quantized to the LCD's RGB565 format.
 #define UI_ACCENT 0x3e37u
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")

@@ -28,6 +28,7 @@ static int persistence_flush(void){
  for(unsigned i=0;i<2;i++)for(unsigned j=0;j<256;j++)assert(dma[i][j]==0);
  flushes++;save_status=result;return result;
 }
+static int persistence_initialize(uint32_t a,uint32_t b){(void)a;(void)b;return persistence_flush();}
 #include "../firmware/src/settings_save.c"
 static void fresh(void){frame_counter=fm1_ms=ticks=updating=settings_dirty=settings_pending=save_uncertain=active=mi_r=mi_w=watchdog=locks=ring_half=stall=half_writes=flushes=0;settings_crc=settings_checked=settings_changed=0;fm1_in.notes=usb.ota_req=0;result=save_status=0;config_crc=1234;memset(dma,0x35,sizeof dma);}
 int main(void){

@@ -53,6 +53,14 @@ static void persistence_load(void){
  // Firmware updates must not replace an existing committed configuration.
  if(save_have)instrument_import(save_previous,STATE_BYTES,0);
 }
+static int save_commit_record(uint32_t target,unsigned next){
+ if(save_write(target,save_record,STATE_BYTES)){save_status=-1;return -1;}
+ for(unsigned i=0;i<STATE_BYTES;i+=256){unsigned n=STATE_BYTES-i;if(n>256)n=256;if(save_read(target+i,save_verify,n)||!save_equal(save_verify,save_record+i,n)){save_status=-1;return -1;}}
+ uint8_t commit[4]={'N','S','X','C'};
+ save_uncertain=1;
+ if(save_write(target+STATE_BYTES,commit,4)||save_read(target+STATE_BYTES,save_verify,4)||save_u32(save_verify)!=SAVE_COMMIT){save_status=-1;return -1;}
+ save_have=1;save_address=target;save_sequence=next;for(unsigned i=0;i<STATE_BYTES;i++)save_previous[i]=save_record[i];save_status=save_uncertain=0;return 0;
+}
 static int persistence_flush(void){
  unsigned next=save_attempt_sequence+1;instrument_export(save_record,next);
  if(save_have&&!save_uncertain&&save_equal(save_record+4,save_previous+4,4)&&save_equal(save_record+16,save_previous+16,4)&&save_equal(save_record+32,save_previous+32,STATE_BYTES-32)){save_status=0;return 0;}
@@ -72,10 +80,40 @@ static int persistence_flush(void){
   if(!save_empty(sector,4096)&&save_erase(sector)){save_status=-1;return -1;}target=sector;break;
  }
  if(!target){save_status=-2;return -2;}
- if(save_write(target,save_record,STATE_BYTES)){save_status=-1;return -1;}
- for(unsigned i=0;i<STATE_BYTES;i+=256){unsigned n=STATE_BYTES-i;if(n>256)n=256;if(save_read(target+i,save_verify,n)||!save_equal(save_verify,save_record+i,n)){save_status=-1;return -1;}}
- uint8_t commit[4]={'N','S','X','C'};
- save_uncertain=1;
- if(save_write(target+STATE_BYTES,commit,4)||save_read(target+STATE_BYTES,save_verify,4)||save_u32(save_verify)!=SAVE_COMMIT){save_status=-1;return -1;}
- save_have=1;save_address=target;save_sequence=next;for(unsigned i=0;i<STATE_BYTES;i++)save_previous[i]=save_record[i];save_status=save_uncertain=0;return 0;
+ return save_commit_record(target,next);
+}
+
+// Read/check only the fixed settings journal. No caller-supplied addresses.
+static int persistence_storage_crc(uint32_t*out){
+ uint32_t c=~0u;
+ for(unsigned off=SAVE_LO;off<SAVE_HI;off+=256){
+  if(save_read(off,save_verify,256))return -1;
+  for(unsigned i=0;i<256;i++){c^=save_verify[i];for(unsigned k=0;k<8;k++)c=(c>>1)^((c&1)?0xedb88320u:0);}
+ }
+ *out=~c;return 0;
+}
+static int persistence_initialize(uint32_t backup_crc,uint32_t config_crc){
+ uint32_t actual;if(persistence_storage_crc(&actual)){save_status=-1;return -1;}
+ if(actual!=backup_crc)return -4;
+ // Rescan before choosing the sector: a prior commit could have reached flash
+ // even if its acknowledgement/readback failed. Never erase that newer copy.
+ unsigned active=0,latest=0,have=0;
+ for(unsigned sector=SAVE_LO;sector<SAVE_HI;sector+=4096)for(unsigned slot=0;slot<3;slot++){
+  unsigned off=sector+slot*SAVE_STRIDE;
+  if(save_read(off,save_record,STATE_BYTES)||save_read(off+STATE_BYTES,save_verify,4)){save_status=-1;return -1;}
+  if(save_u32(save_verify)!=SAVE_COMMIT||!instrument_valid(save_record,STATE_BYTES))continue;
+  unsigned sequence=save_u32(save_record+20);
+  if(!have||(int32_t)(sequence-latest)>0){have=1;latest=sequence;active=sector;}
+ }
+ instrument_export(save_record,0);if(save_u32(save_record+12)!=config_crc)return -4;
+ unsigned target=active==SAVE_LO?SAVE_LO+4096:SAVE_LO;
+ unsigned next=save_attempt_sequence;if(have&&(int32_t)(latest-next)>0)next=latest;next++;save_attempt_sequence=next;instrument_export(save_record,next);
+ if(save_erase(target)||!save_empty(target,4096)){save_status=-1;return -1;}
+ if(save_commit_record(target,next))return -1;
+ // Only after the replacement is committed may the other sector be erased.
+ // A cut here retains that record. A torn unknown sector stays protected and
+ // can be reinitialized explicitly using a fresh backup; never auto-erase it.
+ unsigned other=target==SAVE_LO?SAVE_LO+4096:SAVE_LO;
+ if(save_erase(other)||!save_empty(other,4096)){save_status=-1;return -1;}
+ save_status=0;return 0;
 }

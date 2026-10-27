@@ -20,6 +20,7 @@ static unsigned ota_pack7(const uint8_t*in,unsigned n,uint8_t*out){unsigned acc=
 static unsigned ota_unpack7(const uint8_t*in,unsigned n,uint8_t*out,unsigned max){unsigned acc=0,bits=0,k=0;while(n--){acc|=(unsigned)*in++<<bits;bits+=7;while(bits>=8){if(k<max)out[k]=acc&255;k++;acc>>=8;bits-=8;}}return k;}
 static int ota_wire_send(const uint8_t*p,unsigned n){assert(n<=sizeof wire);memcpy(wire,p,n);wire_n=n;return 0;}
 static int settings_flush(void){return persistence_flush();}
+static int settings_initialize(uint32_t a,uint32_t b){return persistence_initialize(a,b);}
 #define MEMORY_LOCK() ((void)0)
 #define MEMORY_UNLOCK() ((void)0)
 #include "../firmware/src/memory_midi.c"
@@ -52,5 +53,25 @@ int main(void){
  desired[100]^=1;stage(desired);command(3,0,0);assert(wire[8]==2);boot();assert(instrument_octave()==1);
  memset(flash,255,sizeof flash);boot();assert(!persistence_flush());instrument_octave_set(1);fail_commit_read=1;assert(persistence_flush()==-1);instrument_octave_set(2);assert(!persistence_flush());boot();assert(instrument_octave()==2);
  memset(flash,255,sizeof flash);boot();assert(!persistence_flush());instrument_octave_set(1);fail_commit_read=1;assert(persistence_flush()==-1);instrument_octave_set(0);assert(!persistence_flush());boot();assert(instrument_octave()==0);
+ // Explicit initialization needs matching complete-backup and state checksums.
+ memset(flash,255,sizeof flash);memset(flash+SAVE_LO,0x5a,SAVE_HI-SAVE_LO);boot();uint32_t backup_crc;assert(!persistence_storage_crc(&backup_crc));instrument_export(seed,0);uint32_t config_crc=save_u32(seed+12);memcpy(baseline,flash,sizeof flash);
+ count=programs;e=erases;assert(persistence_initialize(backup_crc^1,config_crc)==-4);assert(persistence_initialize(backup_crc,config_crc^1)==-4);assert(programs==(int)count&&erases==(int)e&&!memcmp(flash,baseline,sizeof flash));
+ assert(!persistence_initialize(backup_crc,config_crc));assert(save_have);boot();assert(instrument_octave()==0);instrument_octave_set(2);assert(!persistence_flush());boot();assert(instrument_octave()==2);for(unsigned i=0;i<20;i++){instrument_octave_set(i%3);assert(!persistence_flush());boot();assert(instrument_octave()==i%3);}
+ // Every sampled initialization cut keeps the newest committed state, and an
+ // explicit fresh-backup initialization can recover each interrupted phase.
+ for(int cut=0;cut<4096+1124+16+4096;cut+=17){
+  memset(flash,255,sizeof flash);budget=-1;boot();instrument_octave_set(2);assert(!persistence_flush());memset(flash+SAVE_LO+4096,0x5a,4096);assert(!persistence_storage_crc(&backup_crc));instrument_export(seed,0);config_crc=save_u32(seed+12);
+  budget=cut;(void)persistence_initialize(backup_crc,config_crc);budget=-1;boot();assert(instrument_octave()==2);assert(!persistence_storage_crc(&backup_crc));instrument_export(seed,0);assert(!persistence_initialize(backup_crc,save_u32(seed+12)));boot();assert(instrument_octave()==2);
+  assert(!memcmp(flash,baseline,SAVE_LO));assert(!memcmp(flash+SAVE_HI,baseline+SAVE_HI,sizeof flash-SAVE_HI));
+ }
+ // Initialization must preserve a newer committed copy whose readback failed
+ // during the prior save, not just the last copy tracked in volatile metadata.
+ memset(flash,255,sizeof flash);boot();assert(!persistence_flush());instrument_octave_set(1);assert(!persistence_flush());instrument_octave_set(2);assert(!persistence_flush());instrument_octave_set(1);fail_commit_read=1;assert(persistence_flush()==-1);assert(!persistence_storage_crc(&backup_crc));instrument_export(seed,0);budget=17;assert(persistence_initialize(backup_crc,save_u32(seed+12))==-1);budget=-1;boot();assert(instrument_octave()==1);
+ // Protocol backup reads are fixed to the journal; stale proof and busy keys
+ // refuse initialization without erasing, before an acknowledged valid request.
+ memset(flash,255,sizeof flash);memset(flash+SAVE_LO,0x5a,SAVE_HI-SAVE_LO);boot();uint8_t chunk=63;command(4,&chunk,1);assert(wire[8]==63);assert(ota_unpack7(wire+9,wire_n-11,actual,128)==128);for(unsigned i=0;i<128;i++)assert(actual[i]==0x5a);
+ assert(!persistence_storage_crc(&backup_crc));instrument_export(seed,0);uint8_t proof[12],packed[14];sw32(proof,backup_crc);sw32(proof+4,save_u32(seed+12));sw32(proof+8,0x54494e49u);assert(ota_pack7(proof,12,packed)==14);
+ e=erases;fm1_in.notes=1;uint8_t error[2]={127,3};command(4,&chunk,1);assert(!memcmp(wire+8,error,2));command(5,packed,14);assert(wire[8]==3&&erases==(int)e);fm1_in.notes=0;
+ proof[0]^=1;ota_pack7(proof,12,packed);command(5,packed,14);assert(wire[8]==7&&erases==(int)e);proof[0]^=1;ota_pack7(proof,12,packed);command(5,packed,14);assert(wire[8]==0&&erases==(int)e+2);boot();assert(save_have);
  puts("Journal passed: every program cut, erase rollover cuts, foreign storage, deduplication, firmware-seed independence and CRC rejection");return 0;
 }

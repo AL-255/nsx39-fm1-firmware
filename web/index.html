@@ -48,7 +48,7 @@
 </div></section>
 <section aria-labelledby="install-title"><h2 id="install-title">3. Install on an FM-1</h2>
 <p>The debug screen shows the last played and upcoming syllables, MIDI note, articulation settings and output waveform.</p>
-<p class="notice">FM-1_946 saves once after changes settle, keeps audio running silently during saves, and preserves saved memories and settings across firmware updates. Press both OCT buttons briefly to open or close settings; knob 1 selects an item and knob 2 changes it. The default octave is OCT0.</p>
+<p class="notice">FM-1_947 adds storage backup and initialization in Device settings. Autosave runs once after changes settle, and saved memories/settings survive firmware updates. Press both OCT buttons briefly to open or close settings; knob 1 selects an item and knob 2 changes it. The default octave is OCT0.</p>
 <label class="check"><input id="ack" type="checkbox">I want to test this experimental build, have backed up my FM-1, and have reviewed the recovery instructions below.</label>
 <button id="install" disabled>Connect and install</button>
 <div id="install-progress" hidden>
@@ -82,6 +82,14 @@
 <button id="settings-read" disabled>Connect and read settings</button><p id="settings-device" class="small"></p>
 <form id="settings-form"><fieldset id="settings-fields" class="device-settings" disabled><legend>Parameters</legend></fieldset></form>
 <div class="row"><button id="settings-save" disabled>Save settings to FM-1</button><button id="settings-defaults" disabled>Use default values</button></div>
+<details><summary>Storage repair</summary>
+<p>If saving reports another storage format, back it up before initializing. Initialization replaces only the 8 KiB lyric/settings storage area and keeps the current device parameters and lyrics. Your browser drafts are retained.</p>
+<button id="storage-backup" disabled>Read storage and prepare backup</button>
+<p><a id="storage-download" hidden download="fm1-settings-storage-backup.json">Download storage backup</a></p>
+<label class="check"><input id="storage-ack" type="checkbox" disabled>I saved the backup and want to replace the old data in the lyric/settings storage area.</label>
+<button id="storage-initialize" disabled>Initialize lyric/settings storage</button>
+<p id="storage-status" role="status" aria-live="polite">Requires FM-1_947 or newer. Release all keys and turn hold off first.</p>
+</details>
 <p id="settings-status" role="status" aria-live="polite">Requires FM-1_943 or newer and SysEx MIDI access.</p>
 </section></div>
 <footer><p>All 128 pronunciations and 449 recorded units. Sustained cycles are lossless; transitions use block ADPCM. GM tones and original hardware effects are unavailable in this dump.</p><p>GPL-3.0-only · <a href="source.tar.gz">Corresponding source archive</a> · <a href="https://github.com/AL-255/nsx39-fm1-firmware">Source & build instructions</a> · <a href="https://github.com/AL-255/NSX39-Disasm">NSX39 research</a> · <a href="https://github.com/hugelton/Felucca">Felucca hardware & updater</a> · <a href="https://joakimeriksson.github.io/fm1-emu/">FM-1 emulator</a></p><p class="small">No affiliation with Yamaha, Gakken or M-VAVE. No NSX39 binaries or recordings are hosted here. <a href="licenses/GPL-3.0.txt">GPL</a> · <a href="licenses/Apache-2.0.txt">JieLi SDK license</a> · <a href="licenses/DejaVu-LICENSE.txt">Small font</a> · <a href="licenses/Noto-CJK-LICENSE.txt">Noto CJK font</a></p></footer>

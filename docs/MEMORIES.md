@@ -1,4 +1,4 @@
-# Lyric memories and permanent settings (FM-1_946)
+# Lyric memories and permanent settings (FM-1_947)
 
 The webpage has three independent tabs: **Firmware**, **Lyric memories**, and
 **Device settings**. The two device editors use USB-MIDI SysEx; neither loads
@@ -30,6 +30,32 @@ Release keys and sustain hold before saving. Both editors report success only
 after durable acknowledgement and matching readback. FM-1_943 supports these
 editors with its older mode list; DoReMi and Lyrics 00 selection require
 FM-1_944. Older firmware is refused before memory-write commands.
+
+## Occupied storage
+
+An earlier updater can leave a loader staging payload in one of the two sectors
+used for settings. Ordinary saves deliberately refuse to erase an unknown
+format. If saving reports another format, install FM-1_947 or newer, then open
+**Device settings → Storage repair**:
+
+1. Release keys and turn hold off; read storage and prepare a backup.
+2. Download the backup. It includes the raw 8 KiB area, its SHA-256 and the
+   current device configuration. Keep it locally; it is never uploaded.
+3. Check the acknowledgement, then initialize lyric/settings storage.
+4. Return to Lyric memories and save your browser draft.
+
+Initialization replaces only `0xE5000–0xE7000`. It checks the entire raw backup
+CRC and current configuration CRC immediately before erasing anything. A changed
+snapshot is refused and requires a new backup. Current device parameters and
+lyrics are committed and verified in the other sector before the old committed
+sector is erased. A power cut therefore retains any prior newest valid record
+until its replacement exists. If the remaining erase is interrupted, keep the
+backup and repeat the explicit flow with a fresh snapshot. Unknown torn bytes
+are never erased by an ordinary save. Browser drafts are not discarded.
+
+The two repair SysEx commands expose only fixed journal chunks and a checksummed
+initialization proof; neither accepts arbitrary addresses. They do not invoke or
+modify the firmware updater. Initialization is never automatic on a save error.
 
 ## Panel and display
 

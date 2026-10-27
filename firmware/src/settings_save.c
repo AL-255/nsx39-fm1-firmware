@@ -4,7 +4,7 @@
 #define SETTINGS_LOCK() __asm__ volatile("cli":::"memory")
 #define SETTINGS_UNLOCK() __asm__ volatile("sti":::"memory")
 #endif
-static int settings_flush(void){
+static int settings_quiet(void){
  // Serialize admission with note handling. Leave I2S/DMA clocking throughout
  // flash access: stopping it can pop the external codec, including after a failed save.
  SETTINGS_LOCK();
@@ -17,11 +17,20 @@ static int settings_flush(void){
   fm1_wdt_feed();
   if(fm1_ticks()-began>=24u*20000u){updating=0;return -3;}
  }
- // With the complete ring silent, DMA can repeat it autonomously even while
- // the existing RAM flash driver masks IRQs and temporarily suspends XIP.
- int result=persistence_flush();
+ return 0;
+}
+static int settings_finish(int result){
  if(!result){instrument_export(save_record,0);settings_crc=save_u32(save_record+12);settings_dirty=0;}
  updating=0;return result;
+}
+static int settings_flush(void){
+ int rc=settings_quiet();if(rc)return rc;
+ // DMA repeats silence autonomously while the RAM flash driver masks IRQs.
+ return settings_finish(persistence_flush());
+}
+static int settings_initialize(uint32_t backup_crc,uint32_t config_crc){
+ int rc=settings_quiet();if(rc)return rc;
+ return settings_finish(persistence_initialize(backup_crc,config_crc));
 }
 static void settings_poll(void){
  if(fm1_ms-settings_checked<250)return;settings_checked=fm1_ms;

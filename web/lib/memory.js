@@ -25,10 +25,11 @@ export function decodeMemory(input){
  const config={values:Array.from({length:18},(_,i)=>v.getUint16(32+i*2,true)),lyrics:lyricArrays(b.slice(96))};if(v.getUint32(4,true)===1){if(config.values[14]>15)throw Error('Invalid legacy mode');if(config.values[14])config.values[14]+=2;}encodeMemory(config);return config;
 }
 export function parseLyrics(text,labels){
- const normalize=s=>s.normalize('NFKC').toLowerCase().replace(/\s/g,'').replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
- const map=new Map();labels.forEach(([roman,kana],id)=>{for(const s of [roman,kana])if(!map.has(normalize(s)))map.set(normalize(s),id);});map.set('を',labels.findIndex(([s])=>s==='wo'));
- const keys=[...map.keys()].sort((a,b)=>b.length-a.length),s=normalize(text).replace(/[,、。・.!?！？]/g,'');let p=0;const ids=[];
- while(p<s.length){if(s[p]==='#'){const m=/^#(\d{1,3})/.exec(s.slice(p));if(!m||Number(m[1])>127)throw Error(`Invalid syllable ID near ${s.slice(p,p+8)}`);ids.push(Number(m[1]));p+=m[0].length;}else{const k=keys.find(k=>s.startsWith(k,p));if(!k)throw Error(`Unknown syllable near “${s.slice(p,p+8)}”`);ids.push(map.get(k));p+=k.length;}}
+ const normalize=s=>s.normalize('NFKC').toLowerCase().replace(/[ァ-ヶ]/g,c=>String.fromCharCode(c.charCodeAt(0)-0x60));
+ const map=new Map();labels.forEach(([roman,kana],id)=>{for(const s of [roman,kana]){const key=normalize(s).replace(/\s/g,'');if(!map.has(key))map.set(key,id);}});map.set('を',labels.findIndex(([s])=>s==='wo'));
+ const keys=[...map.keys()].sort((a,b)=>b.length-a.length),ids=[];
+ const parts=normalize(text).replace(/\bn\s+\((m|ng|ny|n)\)/g,'n($1)').split(/[\s'’ʼ,、。・.!?！？]+/).filter(Boolean);
+ for(const s of parts){let p=0;while(p<s.length){if(s[p]==='#'){const m=/^#(\d{1,3})/.exec(s.slice(p));if(!m||Number(m[1])>127)throw Error(`Invalid syllable ID near ${s.slice(p,p+8)}`);ids.push(Number(m[1]));p+=m[0].length;}else{const k=keys.find(k=>s.startsWith(k,p));if(!k)throw Error(`Unknown syllable near “${s.slice(p,p+8)}”`);ids.push(map.get(k));p+=k.length;}}}
  if(ids.length<1||ids.length>63)throw Error('Use 1–63 syllables per memory');return ids;
 }
 export function loadMemory(storage){const raw=storage.getItem(STORAGE_KEY);if(!raw)return null;const data=JSON.parse(raw);if(![1,2].includes(data.version))throw Error('Unsupported saved memory version');if(data.version===1&&data.values[14])data.values[14]+=2;encodeMemory(data);return {values:data.values,lyrics:data.lyrics};}

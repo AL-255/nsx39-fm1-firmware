@@ -8,7 +8,7 @@ const config=()=>({values:[...DEFAULT_VALUES],lyrics:lyricArrays(fakeLyrics())})
 test('kana, katakana, romaji and exact IDs produce the same bounded lyric sequence',async()=>{
  const labels=JSON.parse(await readFile('web/syllables.json'));
  for(const text of ['はつねみく','ハツネミク','ha tsu ne mi ku','hatsunemiku','は、つ。ね みく'])assert.deepEqual(parseLyrics(text,labels),[71,60,66,101,7]);
- assert.deepEqual(parseLyrics('#124 #127',labels),[124,127]);for(const text of ['', 'hello!', '#128','あ'.repeat(64)])assert.throws(()=>parseLyrics(text,labels));
+ assert.deepEqual(parseLyrics('#124 #127',labels),[124,127]);assert.deepEqual(parseLyrics("o'ozora o’ozora",labels),[4,4,30,111,4,4,30,111]);assert.deepEqual(parseLyrics("n a n'ya n (m)",labels),[123,0,123,108,124]);for(const text of ['', 'hello!', '#128','あ'.repeat(64)])assert.throws(()=>parseLyrics(text,labels));
 });
 test('configuration round-trips through browser storage and C, rejects corruption and preserves lyric position',async()=>{
  const c=config();c.values[0]=250;c.values[16]=2;c.values[17]=0;c.lyrics[6]=[5,6,7,8];const b=encodeMemory(c);assert.deepEqual(decodeMemory(b),c);
@@ -55,4 +55,15 @@ test('FM-1_943 wire uses its legacy format and unsupported modes send no staging
  device.request=async(cmd,p=[])=>{calls++;if(cmd===2){staged.set(unpack7(p.slice(1)),p[0]*128);return[0];}if(cmd===3)return[0];throw Error('Unexpected command');};device.read=async()=>decodeMemory(staged);
  await device.write(c);assert.equal(calls,10);assert.equal(new DataView(staged.buffer).getUint32(4,true),1);assert.equal(new DataView(staged.buffer).getUint16(60,true),6);
  for(const mode of[1,2]){c.values[14]=mode;await assert.rejects(device.write(c),/944/);}assert.equal(calls,10);
+});
+test('storage repair requires a complete checked backup and sends only a fixed proof',async()=>{
+ const c=config(),state=encodeMemory(c),raw=Uint8Array.from({length:8192},(_,i)=>(i*17+31)&255);let initialized=0;
+ const device=new DeviceMemory({id:{version:947,text:'FM-1_947'},link:{}});device.readBytes=async()=>state.slice();device.request=async(cmd,data)=>{
+  if(cmd===4){assert(data[0]>=0&&data[0]<64);return[data[0],...pack7(raw.slice(data[0]*128,(data[0]+1)*128))];}
+  assert.equal(cmd,5);const proof=new Uint8Array(unpack7(data)),v=new DataView(proof.buffer);assert.equal(proof.length,12);assert.equal(v.getUint32(0,true),crc32(raw));assert.equal(v.getUint32(4,true),new DataView(state.buffer).getUint32(12,true));assert.deepEqual([...proof.slice(8)],[73,78,73,84]);initialized++;return[0];
+ };
+ const backup=await device.backupStorage();assert.deepEqual(backup.storage,[...raw]);assert.deepEqual(await device.initializeStorage(backup),c);assert.equal(initialized,1);
+ for(const mutate of[b=>b.storage[0]^=1,b=>b.offset=0,b=>b.device='FM-1_946',b=>b.storage.pop()]){const bad=structuredClone(backup);mutate(bad);await assert.rejects(device.initializeStorage(bad));}assert.equal(initialized,1);
+ device.request=async()=>[7];await assert.rejects(device.initializeStorage(backup),/changed since/);
+ device.device.id.version=946;await assert.rejects(device.backupStorage(),/947/);await assert.rejects(device.initializeStorage(backup),/947/);
 });

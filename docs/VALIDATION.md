@@ -360,3 +360,51 @@ at the 63-syllable limit, browser draft persistence and retained editor focus.
 The black/cyan desktop and four-column mobile layouts were visually inspected;
 the mobile page has no horizontal overflow. Keyboard clicks change browser drafts
 only. No MIDI writes, firmware changes or physical device tests were needed.
+
+
+## Occupied storage and physical lyric save (FM-1_947)
+
+On the connected FM-1_946, a requested 56-syllable write to slot 00 returned status
+6. Raw state before/after was identical, confirming rollback and preserving the
+other banks/parameters. FM-1_947 was installed through the pinned loader after
+hash/product/identity preflight and successful zero/A5/FF SRAM boot, OTA, loader,
+41 JavaScript and 11 Python tests. The installer observed FM-1_947 after restart.
+
+The new fixed-region backup command retrieved all 8,192 bytes of
+`0xE5000–0xE7000` plus a stable current-state snapshot. The first sector contained
+three valid version-1 NSXS/NSXC records; the other began with an old LOADER.BIN
+staging header. Ordinary journal protection had correctly refused rollover into
+that payload. The complete raw backup was retained locally with SHA-256
+`1c1bb97e3598d9b7c985e476aaa110079f98b5261369d396acdef5a74e598f9e`.
+No backup contents, user lyrics or resulting vocal package are published.
+
+After that verified backup, explicit initialization returned status 0 and
+preserved its current configuration. The requested slot-00 write then returned
+status 0. Both RAM readback and a fresh raw flash read verified all 56 syllables,
+all original pre-update parameter values and unchanged banks 01–15. The latest
+valid NSXS/NSXC record is sequence 5 at `0xE6480`. This establishes physical
+installation and durable memory writing/readback; no power interruption or
+physical audio/full-performance validation was performed.
+
+Public host tests refuse stale raw/state checksums and busy-key requests without
+erasing. They sample initialization interruption at every 17 programmed/erased
+bytes across both sectors, reboot to verify the previous committed state survives,
+then complete an explicitly reauthorized fresh-backup initialization. Subsequent
+journal rollover is checked for twenty saves. All writes stay inside the journal;
+normal foreign/future-format protection remains in place. Browser tests verify
+that repair requires a prepared backup, download and acknowledgement before one
+explicit initialization, followed by matching state readback. Browser/API tests
+also reject altered or wrong-device backups and old firmware before sending an
+initialization command.
+
+The public template SHA-256 is
+`8fde6b06ddebba58b6d2d4ff64690a60d927ef63812bd135d664fb4772b34d99`;
+the app is 567,116 bytes with unchanged RAM/pool and voice-bank capacity.
+
+The second user-provided verse was then written to slot 01 (61 syllables).
+Live and committed flash readback agreed; the newest record is sequence 6 at
+`0xE6900`, retaining slot 00 and every other bank/parameter. The webpage parser
+now preserves whitespace/apostrophe syllable boundaries, including long-vowel
+spellings and explicit nasal separation, with regressions for both. Initialization
+also rescans committed records before choosing a sector, covering a newer commit
+whose prior readback failed; interruption must preserve that actual newest copy.

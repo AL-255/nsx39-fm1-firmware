@@ -22,6 +22,21 @@ static int memory_sysex(const uint8_t*p,unsigned n){
   MEMORY_LOCK();instrument_export(memory_before,0);MEMORY_UNLOCK();
   uint8_t payload[150];payload[0]=p[7];unsigned packed=ota_pack7(memory_before+off,len,payload+1);memory_reply(command,id,payload,packed+1);return 1;
  }
+ // Raw journal backup, 64 fixed 128-byte chunks; reads never erase/program.
+ if(command==4&&n==9&&p[7]<64){
+  if(nsx_active()||fm1_in.notes||updating){uint8_t error[2]={127,3};memory_reply(command,id,error,2);return 1;}
+  uint8_t raw[128],payload[150];
+  if(save_read(SAVE_LO+p[7]*128u,raw,128)){uint8_t error[2]={127,5};memory_reply(command,id,error,2);return 1;}
+  payload[0]=p[7];unsigned packed=ota_pack7(raw,128,payload+1);memory_reply(command,id,payload,packed+1);return 1;
+ }
+ // Initialization is explicit and guarded by the exact raw backup and current
+ // configuration CRCs. It can touch only the fixed settings journal sectors.
+ if(command==5&&n==22){
+  uint8_t proof[12];
+  if(ota_unpack7(p+7,14,proof,12)!=12||save_u32(proof+8)!=0x54494e49u)status=2;
+  else if(nsx_active()||fm1_in.notes||updating)status=3;
+  else{int rc=settings_initialize(save_u32(proof),save_u32(proof+4));status=rc==-4?7:rc==-3?3:rc?5:0;}
+ }
  if(command==2&&n>=10&&p[7]<9){
   unsigned off=p[7]*128u,len=STATE_BYTES-off;if(len>128)len=128;
   if(n==9u+(len*8+6)/7){if(!p[7])memory_mask=0;if(ota_unpack7(p+8,n-9,memory_staged+off,len)==len){memory_mask|=1u<<p[7];status=0;}}
