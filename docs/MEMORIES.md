@@ -1,4 +1,4 @@
-# Lyric memories and permanent settings (FM-1_945)
+# Lyric memories and permanent settings (FM-1_946)
 
 The webpage has three independent tabs: **Firmware**, **Lyric memories**, and
 **Device settings**. The two device editors use USB-MIDI SysEx; neither loads
@@ -53,7 +53,11 @@ small silence floor to avoid amplifying digital silence. Scaling is visual only.
 ## Saving and flash boundaries
 
 Memories and parameters are saved after two seconds without a configuration
-change, once the keys/voice are idle. Active notes, lyric playback position,
+change, once the keys/voice are idle. A burst of changes is combined into one
+attempt after the last change. From FM-1_946, failed saves (including uncertain
+commit readback) remain visible without periodic automatic retries. Another
+parameter change schedules a new attempt; an explicit webpage Save can also
+attempt again. Playing notes and remaining idle do not schedule saves. Active notes, lyric playback position,
 last-played text, pitch bend and the physical MASTER position are not restored
 as sounding performance state. This avoids writing flash on every played note.
 The settings screen reports pending, saved or failed/occupied storage.
@@ -62,7 +66,7 @@ FM-1_945 keeps I2S/DMA running during saves. Once the voice is idle, it lets the
 audio interrupt fill both DMA halves with silence before touching flash. That
 silent ring can repeat autonomously while the RAM driver masks interrupts. A
 20 ms timeout defers the save if audio stops advancing; it never forces a codec
-restart. Failed saves can therefore retry without cycling the audio clock.
+restart. Explicit subsequent saves also keep the audio clock running.
 This also applies to saves requested by the MIDI editors.
 
 The journal uses only `0xE5000–0xE7000`, the two autosave sectors documented by

@@ -4,7 +4,7 @@
 #define FELUCCA_OTA 1
 #define FELUCCA_CDC 0
 #define FELUCCA_UAC 0
-#define FELUCCA_ID "FM-1_945"
+#define FELUCCA_ID "FM-1_946"
 // Miku cyan #39C5BB, quantized to the LCD's RGB565 format.
 #define UI_ACCENT 0x3e37u
 #define RING_PUBLISH() __asm__ volatile("" ::: "memory")
@@ -37,7 +37,7 @@ static int32_t dma_audio[512] __attribute__((aligned(4)));
 static volatile uint32_t audio_busy,render_us,render_max_us,audio_late,frame_counter;
 static volatile uint32_t master_level;
 static int voice_ready;
-static unsigned settings_open,settings_item,reset_armed,settings_dirty,runtime_ready,save_supported;
+static unsigned settings_open,settings_item,reset_armed,settings_dirty,settings_pending,runtime_ready,save_supported;
 static uint32_t settings_crc,settings_changed,settings_checked;
 static unsigned panel_note=255,panel_key=255,held_note_mask;
 static volatile int16_t scope[512];

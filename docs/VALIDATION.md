@@ -324,3 +324,28 @@ recorded for this fix.
 
 The final app is 566,176 bytes; template SHA-256:
 `1e8af2f71e8db24edb2ce7fdfbd3a7d226659d324b9c33cae7a016b5c3ac7e53`.
+
+
+## One save attempt per settled change (FM-1_946)
+
+Autosave keeps an unsaved-state flag separately from its pending-attempt flag.
+A changed configuration schedules one attempt two seconds after the last change,
+once notes, release and queued MIDI are idle. The attempt is consumed before
+waiting for the silent DMA ring. Failure or uncertain commit readback does not
+re-arm it. The error stays visible; a later parameter change or an explicit
+webpage save can attempt again. An explicit successful save also consumes a
+pending autosave, avoiding a second save of the same state. The journal retains
+its unchanged-state deduplication and unique sequence numbers after uncertain
+commits. Its flash bounds and the update loader are unchanged.
+
+The actual C autosave policy is tested under ASan/UBSan with rapid changes,
+a long held/releasing voice, a failed attempt followed by over a minute of idle
+polls, another edit, explicit saves before the debounce deadline, failed explicit
+saves, uncertain commits and audio-ring timeout. Only the appropriate single
+attempt occurs in each case. All 40 JavaScript and 11 Python tests pass.
+The existing long-release silence and uninterrupted-DMA checks still apply.
+No physical hardware was flashed for this change.
+
+Template SHA-256:
+`7785766f4751061b3c83c4b282f9917cc229444e188e12e156cf0a1deb0ce03e`.
+The app is 566,184 bytes; the bank remains within its existing reserve.

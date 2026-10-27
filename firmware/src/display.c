@@ -24,7 +24,7 @@ static void settings_screen(void){
   if(text)put_text(152,y,text,color,1);else label_num(176,y,"",value);
  }
  put_text(8,212,"1: select   2: change",0xad55,1);
- put_text(8,227,save_status<0?(save_status==-2?"Storage occupied":"Save failed - retry"):settings_dirty?"Saves when keys released":"Saved",save_status<0?0xfca0:UI_ACCENT,1);
+ put_text(8,227,save_status<0?(save_status==-2?"Storage occupied":"Save failed"):settings_dirty?(settings_pending?"Saves when keys released":"Not saved"):"Saved",save_status<0?0xfca0:UI_ACCENT,1);
 }
 static void screen(void){
  nsx_debug_t state;nsx_art_debug_t art;performance_state_t song;int16_t wave[102];

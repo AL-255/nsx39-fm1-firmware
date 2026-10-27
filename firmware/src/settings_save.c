@@ -6,10 +6,10 @@
 #endif
 static int settings_flush(void){
  // Serialize admission with note handling. Leave I2S/DMA clocking throughout
- // flash access: stopping it can pop the external codec, including on retries.
+ // flash access: stopping it can pop the external codec, including after a failed save.
  SETTINGS_LOCK();
  if(nsx_active()||fm1_in.notes||mi_r!=mi_w||updating){SETTINGS_UNLOCK();return -3;}
- updating=1;uint32_t start=frame_counter;SETTINGS_UNLOCK();
+ settings_pending=0;updating=1;uint32_t start=frame_counter;SETTINGS_UNLOCK();
  // The audio IRQ writes silence to the free half while updating is set. Wait
  // for both halves; never overwrite a DMA half that may still be playing.
  uint32_t began=fm1_ticks();
@@ -26,7 +26,8 @@ static int settings_flush(void){
 static void settings_poll(void){
  if(fm1_ms-settings_checked<250)return;settings_checked=fm1_ms;
  SETTINGS_LOCK();instrument_export(save_record,0);SETTINGS_UNLOCK();
- uint32_t current=save_u32(save_record+12);if(current!=settings_crc){settings_crc=current;settings_changed=fm1_ms;settings_dirty=1;}
- if(save_uncertain&&!settings_dirty){settings_dirty=1;settings_changed=fm1_ms;}
- if(settings_dirty&&fm1_ms-settings_changed>=2000&&!nsx_active()&&!fm1_in.notes&&!usb.ota_req&&!updating){settings_flush();settings_changed=fm1_ms;}
+ uint32_t current=save_u32(save_record+12);if(current!=settings_crc){settings_crc=current;settings_changed=fm1_ms;settings_dirty=settings_pending=1;save_status=0;}
+ // One attempt per settled change. A failure stays visible, without polling
+ // flash again; another change or an explicit MIDI save permits a new attempt.
+ if(settings_pending&&settings_dirty&&fm1_ms-settings_changed>=2000&&!nsx_active()&&!fm1_in.notes&&mi_r==mi_w&&!usb.ota_req&&!updating){settings_flush();}
 }
