@@ -14,7 +14,9 @@ including bank 00, are available. Original bank numbers are retained.
 
 In **Lyric memories**, connect/read, choose 00–15, and enter hiragana, katakana
 or romaji with optional spaces/punctuation. Exact IDs use `#0` through `#127`.
-Browser drafts survive reloads. **Save memory to FM-1** reads fresh device state,
+The on-screen keyboard includes all 128 syllables with kana and romaji labels.
+Click a key to insert at the cursor or replace selected text; nasal variants
+retain their exact IDs. Browser drafts survive reloads. **Save memory to FM-1** reads fresh device state,
 replaces only that bank, commits it, and verifies readback. **Reload selected
 memory** discards that bank’s browser draft. Reading all banks retains drafts.
 

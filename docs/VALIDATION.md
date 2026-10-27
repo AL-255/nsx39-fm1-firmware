@@ -349,3 +349,14 @@ No physical hardware was flashed for this change.
 Template SHA-256:
 `7785766f4751061b3c83c4b282f9917cc229444e188e12e156cf0a1deb0ce03e`.
 The app is 566,184 bytes; the bank remains within its existing reserve.
+
+## On-screen syllable keyboard
+
+The lyric-memory webpage now exposes all 128 syllables as kana/romaji buttons.
+Chrome testing with synthetic browser drafts verifies every button parses back
+to its exact ID, cursor insertion and selection replacement, explicit spacing
+between tokens, distinct nasal variants, rejection of a 64th syllable, replacement
+at the 63-syllable limit, browser draft persistence and retained editor focus.
+The black/cyan desktop and four-column mobile layouts were visually inspected;
+the mobile page has no horizontal overflow. Keyboard clicks change browser drafts
+only. No MIDI writes, firmware changes or physical device tests were needed.

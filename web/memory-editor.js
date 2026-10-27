@@ -9,10 +9,23 @@ const status=s=>{$('memory-status').textContent=s;};
 function persist(){try{localStorage.setItem(KEY,JSON.stringify({version:1,memories,drafts,slot}));}catch(e){status('Browser draft storage unavailable: '+e.message);}}
 function controls(){
  let valid=false;try{const ids=parseLyrics($('memory-text').value,labels);$('memory-preview').textContent=`${ids.length} / 63 syllables · ${ids.map(id=>labels[id][1]).join('')}`;valid=true;}catch(e){$('memory-preview').textContent=memories?e.message:'';}
- $('memory-slot').disabled=$('memory-text').disabled=busy||!memories;
+ $('memory-keyboard').disabled=$('memory-slot').disabled=$('memory-text').disabled=busy||!memories;
  $('memory-read').disabled=busy||!navigator.requestMIDIAccess;$('memory-send').disabled=busy||!memories||!valid||!navigator.requestMIDIAccess;$('memory-reload').disabled=busy||!memories||!navigator.requestMIDIAccess;
 }
 function render(){if(memories)$('memory-text').value=drafts[slot]??text(memories[slot]);controls();}
+function insertSyllable(id){
+ if(busy||!memories)return;
+ const editor=$('memory-text'),start=editor.selectionStart,end=editor.selectionEnd;
+ const token=(start&&!/\s/.test(editor.value[start-1])?' ':'')+(id>=124?'#'+id:labels[id][0])+(end<editor.value.length&&!/\s/.test(editor.value[end])?' ':'');
+ const candidate=editor.value.slice(0,start)+token+editor.value.slice(end);
+ try{parseLyrics(candidate,labels);}catch(e){if(e.message==='Use 1–63 syllables per memory'){status('Memory full: use up to 63 syllables. Select text to replace it.');return;}}
+ editor.setRangeText(token,start,end,'end');editor.focus({preventScroll:true});editor.dispatchEvent(new Event('input',{bubbles:true}));
+}
+labels.forEach(([roman,kana],id)=>{
+ const key=document.createElement('button');key.type='button';key.dataset.syllable=id;key.title=`Syllable #${id}`;key.setAttribute('aria-label',`Insert ${kana}, ${roman}, syllable ${id}`);
+ for(const [value,className]of [[kana,'syllable-kana'],[roman,'syllable-romaji']]){const span=document.createElement('span');span.className=className;span.textContent=value;key.append(span);}
+ key.onclick=()=>insertSyllable(id);$('syllable-keys').append(key);
+});
 for(let i=0;i<16;i++){const o=document.createElement('option');o.value=i;o.textContent='Lyrics '+String(i).padStart(2,'0');$('memory-slot').append(o);}
 try{
  const raw=localStorage.getItem(KEY);
