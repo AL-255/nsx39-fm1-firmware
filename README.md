@@ -1,35 +1,16 @@
-# NSX39 vocal debug firmware for M-VAVE FM-1
+# Gakken NSX39 Pocket-Miku Firmware For M-VAVE FM-1
 
-A GPL-3.0-only native vocal firmware and **browser-local firmware generator**.
-The debug instrument plays individual syllables, pitch-based DoReMi, or sixteen lyric memories.
-**ALGORITHM chooses a performance mode; the keys trigger and pitch its syllables; the display
-shows the last played syllable, the next one, and the output waveform.**
+![Gakken NSX39 Pocket-Miku Firmware For M-VAVE FM-1](./docs/NSX39-FM1.png)
 
-Pages generator: <https://al-255.github.io/nsx39-fm1-firmware/>.
-
-**Experimental hardware installation:** the retained-SRAM startup bug in
-`FM-1_939` was fixed in `FM-1_941`; the user subsequently reported a working
-installation. `FM-1_942` installation and automatic restart were verified on a
-physical FM-1 using native USB-MIDI and the live Pages generator on 2026-10-26.
-Current `FM-1_947` adds a backed-up initialization flow for occupied settings
-storage. It retains one save attempt per settled parameter change and keeps
-audio running silently during saves. Installation and a 56-syllable slot-00
-write/readback were verified on a physical FM-1. DoReMi, all sixteen lyric
-slots, and the separate MIDI editors remain available.
-It retains the startup fix; physical validation of this new build remains pending.
-This is a new recorded-unit/PSOLA-style vocal implementation, not a bit-exact
-port of Yamaha's frontend. Full NSX39 expression, timing, command-slot and
-persistence compatibility remains unfinished. Do not mistake bank coverage for
-complete behavioral equivalence. See [compatibility](docs/COMPATIBILITY.md).
+Device Flashing Page: <https://al-255.github.io/nsx39-fm1-firmware/>
 
 ## Use
 
-1. Open the generator and select your own NSX39 SPI dump. Nothing is uploaded.
-2. Generate, then listen using the same native engine compiled to WebAssembly.
-3. Download the generated `.fwsc` to open in the
-   [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu/) or test on hardware.
-4. For hardware, review the recovery instructions, check the acknowledgement box,
-   and click **Connect and install** in Chrome or Edge with SysEx MIDI access.
+0. Buy a NSX39, open it, and dump the SPI Flash (MX25L series),
+1. Open the generator and select your own NSX39 SPI dump.
+2. Generate`.fwsc` update image.
+3. Upload the image to [FM-1 emulator](https://joakimeriksson.github.io/fm1-emu/) 
+   or test on a real hardware.sEx MIDI access.
    Installation begins only after this explicit action.
 
 Supported input is the analyzed 2,097,152-byte flash image, optionally followed
@@ -57,29 +38,10 @@ On the FM-1:
 | Both OCT buttons, held 5 s | Enter UBOOT for recovery |
 | USB MIDI and TRS MIDI | Vocal channel 1 note/velocity/CC/bend |
 
-The largest label retains the **last played** syllable, even after key release,
-rewind, or a selection change. The **next** sequence appears alongside in smaller type.
-PRESETS changes both labels using a 40-pixel antialiased Noto Sans CJK JP font
-(20 pixels for the upcoming syllable). The display shows current articulation
-settings and an ADSR diagram with its active segment and live level cursor, beside
-a 4.6 ms waveform window with automatic vertical scaling. Last played and the
-smaller upcoming sequence share a row. Diagnostic type is larger, and the
-bottom knob/render-time legend is removed. [Articulation controls and fidelity](docs/ARTICULATION.md)
-describes the exact mappings and the remaining original-behavior gaps.
 
-Each factory bank loops at its original return marker. Banks 1–5 are single-vowel
-loops; banks 6–10 are factory phrases, and 11–15 preserve the original duplicate
-user slots. Selecting a bank or turning SELECT left resets its next syllable;
-neither triggers sound or changes the last played label. Returning to manual mode
-restores its previous SELECT choice. Releasing a key while another remains held
-changes pitch without advancing the lyric. DoReMi uses fixed Do (C = do), with sharp notes using the preceding natural note’s syllable, and updates its syllable when a held-key fallback changes pitch. USB/TRS channel-1 note-on also advances;
-note-off and zero-velocity note-on do not. Memories and parameters are saved
-when idle and restored after power-off. The webpage accepts kana/romaji lyrics,
-remembers drafts locally, and reads/saves memories in a separate **Lyric memories** tab over SysEx. The **Device settings** tab edits parameters over SysEx. These tabs need no dump or firmware generation; generated packages always contain factory defaults, and preview preferences do not change the package. Saved device state survives firmware updates. See [memories and settings](docs/MEMORIES.md).
+## Proprietary Blob
 
-## No proprietary data in this repository or its Pages deployment
-
-The generator validates the dump, XOR-decodes its NSXP body, parses the serialized
+The generator validates the NSX39 ROM dump, XOR-decodes its NSXP body, parses the serialized
 vocal database, pronunciation packets and factory lyric defaults, decodes PCM/Yamaha ADPCM, then creates
 an FM-1 voice bank. All of that runs in a browser worker. No original executable
 code is copied into the result: the synthesis engine is this project's C code.
@@ -98,14 +60,6 @@ bounded 8,192-sample buffers. No heap or unbounded decoding runs in the audio pa
 The firmware uses about **55 KB normal RAM**, **118 KB buffer pool**, and a
 **566 KB app image**, inside the fixed 581,564-byte app slot. Audio renders at
 22,050 Hz and is interpolated to the FM-1's approximately 44.1 kHz output.
-
-Published artifacts contain only our compiled code, an **empty voice reserve**,
-openly licensed font data and three **Apache-2.0 JieLi SDK** packaging components.
-These SDK files are not NSX39 or M-VAVE firmware. The site also publishes a
-corresponding-source archive for the GPL app and browser engine. Their exact inputs and licenses
-are recorded in [vendor/README.md](vendor/README.md).
-Generated user packages retain the original rights in the user-supplied voice
-material; GPL licensing of this code does not relicense Yamaha/Gakken data.
 
 ## Build locally
 
