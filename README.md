@@ -129,3 +129,5 @@ No dump, recording, derived bank or generated user firmware enters public CI.
 - [JieLi AC79 SDK](https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK): Apache-2.0 packaging files.
 
 No affiliation with Yamaha, Gakken or M-VAVE.
+
+You can also try nsx39 fm1 Firmware in the browser, no flashing needed, in the free community [FM-1 Emulator](https://fm1-emulator.atst.tools/).
